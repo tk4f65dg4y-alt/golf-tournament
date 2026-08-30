@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+  <title><%= typeof title !== 'undefined' ? title + ' · ' + siteName : siteName %></title>
+  <link rel="stylesheet" href="/css/style.css" />
+</head>
+<body>
+<% if (user) { %>
+<nav class="nav">
+  <div class="nav-inner">
+    <span class="nav-brand">⛳ <%= siteName %></span>
+    <a class="link <%= typeof active !== 'undefined' && active === 'home' ? 'active' : '' %>" href="/">Leaderboard</a>
+    <a class="link <%= typeof active !== 'undefined' && active === 'rounds' ? 'active' : '' %>" href="/rounds">Rounds</a>
+    <a class="link <%= typeof active !== 'undefined' && active === 'players' ? 'active' : '' %>" href="/players">Players</a>
+    <a class="link <%= typeof active !== 'undefined' && active === 'photos' ? 'active' : '' %>" href="/photos">Photos</a>
+    <a class="link <%= typeof active !== 'undefined' && active === 'sidebets' ? 'active' : '' %>" href="/sidebets">Side Bets</a>
+    <% if (user.is_admin) { %>
+      <a class="link <%= typeof active !== 'undefined' && active === 'admin' ? 'active' : '' %>" href="/admin">Admin</a>
+    <% } %>
+    <span class="spacer"></span>
+    <form action="/logout" method="post"><button class="linklike" type="submit">Log out (<%= user.name.split(' ')[0] %>)</button></form>
+  </div>
+</nav>
+<% } %>
+<div class="container">

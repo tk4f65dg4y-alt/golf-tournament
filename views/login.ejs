@@ -1,0 +1,22 @@
+<% var title = 'Log in' %>
+<%- include('partials/header') %>
+<div class="auth-wrap">
+  <div class="auth-logo">⛳</div>
+  <div class="card">
+    <h1>Welcome back</h1>
+    <% if (error) { %><div class="error-box"><%= error %></div><% } %>
+    <form method="post" action="/login">
+      <div class="field">
+        <label>Email</label>
+        <input type="email" name="email" required value="<%= form.email || '' %>" autocomplete="email" />
+      </div>
+      <div class="field">
+        <label>Password</label>
+        <input type="password" name="password" required autocomplete="current-password" />
+      </div>
+      <button class="btn block" type="submit">Log in</button>
+    </form>
+    <p class="small mt">No account yet? <a href="/register">Register</a></p>
+  </div>
+</div>
+<%- include('partials/footer') %>

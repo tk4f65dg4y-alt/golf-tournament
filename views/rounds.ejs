@@ -1,0 +1,44 @@
+<% var title = 'Rounds'; var active = 'rounds' %>
+<%- include('partials/header') %>
+<h1>Rounds</h1>
+
+<% rounds.forEach(function(r) { %>
+  <div class="card">
+    <div class="flex between">
+      <div>
+        <h2 class="mb0"><a href="/rounds/<%= r.id %>"><%= r.name %></a></h2>
+        <p class="small muted" style="margin:4px 0 0;">
+          <%= r.course || '' %><% if (r.round_date) { %> · <%= new Date(r.round_date).toLocaleDateString(undefined, {month:'short', day:'numeric'}) %><% } %>
+          <% if (r.format_note) { %> · <%= r.format_note %><% } %>
+        </p>
+      </div>
+      <div>
+        <a class="btn secondary small" href="/rounds/<%= r.id %>">Open</a>
+        <% if (user.is_admin) { %>
+        <form method="post" action="/rounds/<%= r.id %>/delete" style="display:inline" onsubmit="return confirm('Delete this round and all its matches?')">
+          <button class="btn danger small" type="submit">Delete</button>
+        </form>
+        <% } %>
+      </div>
+    </div>
+  </div>
+<% }) %>
+
+<% if (!rounds.length) { %><div class="card"><p class="muted">No rounds scheduled yet.</p></div><% } %>
+
+<% if (user.is_admin) { %>
+<div class="card">
+  <h2>Add a round</h2>
+  <form method="post" action="/rounds">
+    <div class="field"><label>Name</label><input type="text" name="name" required placeholder="Day 1 — Fourball" /></div>
+    <div class="grid-2">
+      <div class="field"><label>Course</label><input type="text" name="course" placeholder="Pine Valley GC" /></div>
+      <div class="field"><label>Date</label><input type="date" name="round_date" /></div>
+    </div>
+    <div class="field"><label>Format note (optional)</label><input type="text" name="format_note" placeholder="4 fourball matches" /></div>
+    <button class="btn" type="submit">Add round</button>
+  </form>
+</div>
+<% } %>
+
+<%- include('partials/footer') %>

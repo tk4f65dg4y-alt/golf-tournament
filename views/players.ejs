@@ -1,0 +1,38 @@
+<% var title = 'Players'; var active = 'players' %>
+<%- include('partials/header') %>
+<h1>Players</h1>
+<% if (!teams.length) { %>
+  <div class="card"><p class="muted">No teams yet. <% if (user.is_admin) { %><a href="/admin">Set up teams</a>.<% } %></p></div>
+<% } %>
+<% teams.forEach(function(t) { %>
+  <div class="card">
+    <h2><span class="avatar-dot" style="background:<%= t.color %>"></span><%= t.name %></h2>
+    <table>
+      <thead><tr><th>Name</th><th>Handicap</th></tr></thead>
+      <tbody>
+        <% users.filter(u => u.team_id === t.id).forEach(function(u) { %>
+          <tr><td><%= u.name %><% if (u.is_admin) { %> <span class="tag">admin</span><% } %></td><td><%= u.handicap %></td></tr>
+        <% }) %>
+        <% if (!users.filter(u => u.team_id === t.id).length) { %>
+          <tr><td colspan="2" class="muted small">No players assigned yet.</td></tr>
+        <% } %>
+      </tbody>
+    </table>
+  </div>
+<% }) %>
+<% var unassigned = users.filter(u => !u.team_id) %>
+<% if (unassigned.length) { %>
+  <div class="card">
+    <h2>Unassigned</h2>
+    <table>
+      <thead><tr><th>Name</th><th>Handicap</th></tr></thead>
+      <tbody>
+        <% unassigned.forEach(function(u) { %>
+          <tr><td><%= u.name %></td><td><%= u.handicap %></td></tr>
+        <% }) %>
+      </tbody>
+    </table>
+    <% if (user.is_admin) { %><p class="small muted mt">Assign these players to a team in <a href="/admin">Admin</a>.</p><% } %>
+  </div>
+<% } %>
+<%- include('partials/footer') %>

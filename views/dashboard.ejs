@@ -1,0 +1,101 @@
+<% var title = 'Leaderboard'; var active = 'home' %>
+<%- include('partials/header') %>
+
+<% if (teams.length < 2) { %>
+  <div class="card">
+    <h1>Welcome, <%= user.name.split(' ')[0] %> 👋</h1>
+    <p>This tournament isn't set up yet.
+      <% if (user.is_admin) { %>Head to <a href="/admin">Admin</a> to create your two teams, then <a href="/rounds">Rounds</a> to schedule matches.
+      <% } else { %>Ask your organizer to set up teams and rounds.<% } %>
+    </p>
+  </div>
+<% } else { %>
+  <div class="card">
+    <div class="score-hero">
+      <% teams.forEach(function(t, i) { %>
+        <div class="team-score">
+          <div class="num" style="color: <%= t.color %>"><%= (teamTotals[t.id] || 0) %></div>
+          <div class="label"><%= t.name %></div>
+        </div>
+        <% if (i === 0 && teams.length > 1) { %><div class="vs">vs</div><% } %>
+      <% }) %>
+    </div>
+    <p class="muted small" style="text-align:center; margin-top:10px;"><%= pointsPlayed %> of <%= pointsTotal %> points decided</p>
+  </div>
+<% } %>
+
+<% if (liveMatches.length) { %>
+  <div class="card">
+    <h2>🔴 Live matches</h2>
+    <% liveMatches.forEach(function(m) { %>
+      <a href="/matches/<%= m.id %>" style="text-decoration:none; color:inherit;">
+        <div class="match-row">
+          <div>
+            <div class="small muted"><%= m.round_name %> · <%= m.format %></div>
+            <div class="match-side"><%= m.side1.map(p=>p.name).join(' & ') %> <span class="muted">vs</span> <%= m.side2.map(p=>p.name).join(' & ') %></div>
+          </div>
+          <div class="match-status"><span class="pill live">LIVE</span><br/><%= m.closed_note || '' %></div>
+        </div>
+      </a>
+    <% }) %>
+  </div>
+<% } %>
+
+<% if (upcomingMatches.length) { %>
+  <div class="card">
+    <h2>Upcoming matches</h2>
+    <% upcomingMatches.forEach(function(m) { %>
+      <a href="/matches/<%= m.id %>" style="text-decoration:none; color:inherit;">
+        <div class="match-row">
+          <div>
+            <div class="small muted"><%= m.round_name %> · <%= m.format %></div>
+            <div class="match-side"><%= m.side1.map(p=>p.name).join(' & ') || 'TBD' %> <span class="muted">vs</span> <%= m.side2.map(p=>p.name).join(' & ') || 'TBD' %></div>
+          </div>
+          <div class="match-status"><span class="pill scheduled">Not started</span></div>
+        </div>
+      </a>
+    <% }) %>
+  </div>
+<% } %>
+
+<% if (completeMatches.length) { %>
+  <div class="card">
+    <h2>Completed matches</h2>
+    <% completeMatches.forEach(function(m) { %>
+      <a href="/matches/<%= m.id %>" style="text-decoration:none; color:inherit;">
+        <div class="match-row">
+          <div>
+            <div class="small muted"><%= m.round_name %> · <%= m.format %></div>
+            <div class="match-side"><%= m.side1.map(p=>p.name).join(' & ') %> <span class="muted">vs</span> <%= m.side2.map(p=>p.name).join(' & ') %></div>
+          </div>
+          <div class="match-status"><span class="pill complete"><%= m.closed_note %></span></div>
+        </div>
+      </a>
+    <% }) %>
+  </div>
+<% } %>
+
+<div class="grid-2">
+  <div class="card">
+    <div class="flex between"><h2 class="mb0">Recent photos</h2><a class="small" href="/photos">See all →</a></div>
+    <% if (!recentPhotos.length) { %><p class="muted small">No photos yet.</p><% } else { %>
+      <div class="photo-grid">
+        <% recentPhotos.forEach(function(p) { %>
+          <div class="photo-item"><img src="/uploads/<%= p.filename %>" alt="" /></div>
+        <% }) %>
+      </div>
+    <% } %>
+  </div>
+  <div class="card">
+    <div class="flex between"><h2 class="mb0">Open side bets</h2><a class="small" href="/sidebets">See all →</a></div>
+    <% if (!openBets.length) { %><p class="muted small">No open bets.</p><% } else { %>
+      <% openBets.forEach(function(b) { %>
+        <div class="match-row">
+          <div><%= b.description %><div class="small muted"><%= b.wager || '' %></div></div>
+        </div>
+      <% }) %>
+    <% } %>
+  </div>
+</div>
+
+<%- include('partials/footer') %>

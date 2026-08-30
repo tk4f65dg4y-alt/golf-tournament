@@ -1,0 +1,38 @@
+<% var title = 'Photos'; var active = 'photos' %>
+<%- include('partials/header') %>
+<h1>Photos</h1>
+
+<div class="card">
+  <h2>Add a photo</h2>
+  <% if (error) { %><div class="error-box"><%= error %></div><% } %>
+  <form method="post" action="/photos" enctype="multipart/form-data">
+    <div class="field"><label>Photo</label><input type="file" name="photo" accept="image/*" required /></div>
+    <div class="field"><label>Caption (optional)</label><input type="text" name="caption" placeholder="18th green celebration" /></div>
+    <button class="btn" type="submit">Upload</button>
+  </form>
+</div>
+
+<div class="card">
+  <% if (!photos.length) { %>
+    <p class="muted">No photos yet — be the first to add one!</p>
+  <% } else { %>
+    <div class="photo-grid">
+      <% photos.forEach(function(p) { %>
+        <div class="photo-item">
+          <img src="/uploads/<%= p.filename %>" alt="<%= p.caption || '' %>" />
+          <div class="photo-caption">
+            <%= p.caption || '' %><% if (p.caption) { %><br/><% } %>
+            <span class="muted"><%= p.uploader_name || 'Someone' %></span>
+            <% if (p.uploaded_by === user.id || user.is_admin) { %>
+              · <form method="post" action="/photos/<%= p.id %>/delete" style="display:inline" onsubmit="return confirm('Delete this photo?')">
+                  <button type="submit" style="background:none;border:none;color:var(--red);cursor:pointer;padding:0;font:inherit;">delete</button>
+                </form>
+            <% } %>
+          </div>
+        </div>
+      <% }) %>
+    </div>
+  <% } %>
+</div>
+
+<%- include('partials/footer') %>

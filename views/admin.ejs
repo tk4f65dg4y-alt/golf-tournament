@@ -1,0 +1,72 @@
+<% var title = 'Admin'; var active = 'admin' %>
+<%- include('partials/header') %>
+<h1>Admin</h1>
+
+<div class="card">
+  <h2>Invite code</h2>
+  <% if (inviteCode) { %>
+    <p>Share this with friends so they can register: <strong><%= inviteCode %></strong></p>
+  <% } else { %>
+    <p class="muted small">No invite code is set — anyone can currently self-register. Set the <code>INVITE_CODE</code> environment variable to require one.</p>
+  <% } %>
+</div>
+
+<div class="card">
+  <h2>Teams</h2>
+  <table>
+    <thead><tr><th>Name</th><th>Color</th><th></th></tr></thead>
+    <tbody>
+      <% teams.forEach(function(t) { %>
+        <tr>
+          <td><span class="avatar-dot" style="background:<%= t.color %>"></span><%= t.name %></td>
+          <td><%= t.color %></td>
+          <td>
+            <form method="post" action="/admin/teams/<%= t.id %>/delete" onsubmit="return confirm('Delete team <%= t.name %>? Players keep their profile but lose their team assignment.')">
+              <button class="btn danger small" type="submit">Delete</button>
+            </form>
+          </td>
+        </tr>
+      <% }) %>
+    </tbody>
+  </table>
+  <form method="post" action="/admin/teams" class="grid-2 mt">
+    <div class="field"><label>New team name</label><input type="text" name="name" placeholder="e.g. Team USA" required /></div>
+    <div class="field"><label>Color</label><input type="text" name="color" value="#1b6b3a" /></div>
+    <button class="btn" type="submit" style="grid-column: 1 / -1;">Add team</button>
+  </form>
+</div>
+
+<div class="card">
+  <h2>Players</h2>
+  <% users.forEach(function(u) { %>
+    <form id="user-form-<%= u.id %>" method="post" action="/admin/users/<%= u.id %>"></form>
+  <% }) %>
+  <table>
+    <thead><tr><th>Name</th><th>Email</th><th>Handicap</th><th>Team</th><th>Admin</th><th></th></tr></thead>
+    <tbody>
+      <% users.forEach(function(u) { %>
+        <% var fid = 'user-form-' + u.id %>
+        <tr>
+          <td>
+            <input form="<%= fid %>" type="hidden" name="currentName" value="<%= u.name %>" />
+            <input form="<%= fid %>" type="text" name="name" value="<%= u.name %>" style="min-width:120px;" />
+          </td>
+          <td class="small muted"><%= u.email %></td>
+          <td><input form="<%= fid %>" type="number" step="0.1" name="handicap" value="<%= u.handicap %>" style="width:70px;" /></td>
+          <td>
+            <select form="<%= fid %>" name="team_id" style="min-width:110px;">
+              <option value="">—</option>
+              <% teams.forEach(function(t) { %>
+                <option value="<%= t.id %>" <%= u.team_id === t.id ? 'selected' : '' %>><%= t.name %></option>
+              <% }) %>
+            </select>
+          </td>
+          <td><input form="<%= fid %>" type="checkbox" name="is_admin" <%= u.is_admin ? 'checked' : '' %> /></td>
+          <td><button form="<%= fid %>" class="btn small" type="submit">Save</button></td>
+        </tr>
+      <% }) %>
+    </tbody>
+  </table>
+</div>
+
+<%- include('partials/footer') %>

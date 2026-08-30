@@ -1,0 +1,81 @@
+<% var title = 'Hole ' + (match.statusInfo.thru < 18 ? match.statusInfo.thru + 1 : 18) + ' — Match'; var active = 'rounds' %>
+<%- include('partials/header') %>
+<% if (!canEnter) { %><meta http-equiv="refresh" content="25" /><% } %>
+
+<p><a href="/rounds/<%= match.round_id %>">← <%= match.round_name %></a></p>
+
+<div class="card">
+  <div class="flex between">
+    <span class="tag"><%= match.format %></span>
+    <span class="tag"><%= match.points %> pt<%= Number(match.points) !== 1 ? 's' : '' %></span>
+  </div>
+  <div class="score-hero mt">
+    <div class="team-score">
+      <div class="num" style="color: <%= match.side1[0] ? match.side1[0].team_color : '#1b6b3a' %>"><%= match.statusInfo.team1Wins %></div>
+      <div class="label"><%= match.side1.map(p=>p.name).join(' & ') || 'TBD' %></div>
+    </div>
+    <div class="vs">vs</div>
+    <div class="team-score">
+      <div class="num" style="color: <%= match.side2[0] ? match.side2[0].team_color : '#c9962c' %>"><%= match.statusInfo.team2Wins %></div>
+      <div class="label"><%= match.side2.map(p=>p.name).join(' & ') || 'TBD' %></div>
+    </div>
+  </div>
+  <p style="text-align:center; font-weight:700; margin-top:10px;">
+    <% if (match.statusInfo.isComplete) { %><span class="pill complete"><%= match.statusInfo.closedNote %></span>
+    <% } else { %><span class="pill live"><%= match.statusInfo.thru > 0 ? 'LIVE' : 'NOT STARTED' %></span> <%= match.statusInfo.statusText %><% } %>
+  </p>
+  <% if (match.notes) { %><p class="muted small" style="text-align:center;"><%= match.notes %></p><% } %>
+</div>
+
+<% if (!canEnter) { %>
+  <div class="card"><p class="muted small mb0">👀 You're viewing this match. Only players in the match (or an admin) can enter hole results.</p></div>
+<% } %>
+
+<% var side1Color = match.side1[0] ? match.side1[0].team_color : '#1b6b3a'; var side2Color = match.side2[0] ? match.side2[0].team_color : '#c9962c'; %>
+<% var side1Label = match.side1.map(p=>p.name.split(' ')[0]).join('/') || 'Side 1'; %>
+<% var side2Label = match.side2.map(p=>p.name.split(' ')[0]).join('/') || 'Side 2'; %>
+<% var allPlayers = match.side1.concat(match.side2); %>
+
+<% match.holeList.forEach(function(h) { %>
+  <div class="hole-card" id="hole-<%= h.hole_number %>">
+    <div class="hole-head">
+      <span class="hole-num">Hole <%= h.hole_number %></span>
+      <span class="small muted">
+        <% if (h.winner === 'team1') { %><%= side1Label %> won
+        <% } else if (h.winner === 'team2') { %><%= side2Label %> won
+        <% } else if (h.winner === 'halved') { %>Halved
+        <% } %>
+      </span>
+    </div>
+    <% if (canEnter) { %>
+      <form method="post" action="/matches/<%= match.id %>/hole">
+        <input type="hidden" name="hole_number" value="<%= h.hole_number %>" />
+        <div class="winner-btns">
+          <button class="winner-btn <%= h.winner === 'team1' ? 'selected team1' : '' %>" type="submit" name="winner" value="team1"
+            style="<% if (h.winner==='team1') { %>background:<%= side1Color %>;border-color:<%= side1Color %>;color:#fff;<% } %>"><%= side1Label %></button>
+          <button class="winner-btn <%= h.winner === 'halved' ? 'selected halved' : '' %>" type="submit" name="winner" value="halved">AS</button>
+          <button class="winner-btn <%= h.winner === 'team2' ? 'selected team2' : '' %>" type="submit" name="winner" value="team2"
+            style="<% if (h.winner==='team2') { %>background:<%= side2Color %>;border-color:<%= side2Color %>;color:#fff;<% } %>"><%= side2Label %></button>
+        </div>
+        <div class="strokes-row">
+          <% allPlayers.forEach(function(p) { %>
+            <div class="strokes-field">
+              <label><%= p.name.split(' ')[0] %></label>
+              <input type="number" min="1" max="15" name="strokes_<%= p.id %>" value="<%= match.strokesByHoleUser[h.hole_number + '_' + p.id] || '' %>" />
+            </div>
+          <% }) %>
+        </div>
+        <button class="btn small secondary hole-save" type="submit" name="winner" value="<%= h.winner || '' %>">Save strokes</button>
+      </form>
+    <% } else { %>
+      <div class="strokes-row">
+        <% allPlayers.forEach(function(p) { %>
+          <% var s = match.strokesByHoleUser[h.hole_number + '_' + p.id]; %>
+          <% if (s) { %><div class="strokes-field"><label><%= p.name.split(' ')[0] %></label><span><%= s %></span></div><% } %>
+        <% }) %>
+      </div>
+    <% } %>
+  </div>
+<% }) %>
+
+<%- include('partials/footer') %>

@@ -1,0 +1,78 @@
+<% var title = round.name; var active = 'rounds' %>
+<%- include('partials/header') %>
+<p><a href="/rounds">← All rounds</a></p>
+<h1><%= round.name %></h1>
+<p class="muted"><%= round.course || '' %><% if (round.round_date) { %> · <%= new Date(round.round_date).toLocaleDateString(undefined, {month:'long', day:'numeric', year:'numeric'}) %><% } %></p>
+
+<% matches.forEach(function(m) { %>
+  <div class="card">
+    <div class="flex between">
+      <div>
+        <span class="tag"><%= m.format %></span>
+        <span class="tag"><%= m.points %> pt<%= Number(m.points) !== 1 ? 's' : '' %></span>
+      </div>
+      <% if (user.is_admin) { %>
+        <form method="post" action="/rounds/<%= round.id %>/matches/<%= m.id %>/delete" onsubmit="return confirm('Delete this match?')">
+          <button class="btn danger small" type="submit">Delete</button>
+        </form>
+      <% } %>
+    </div>
+    <div class="match-row" style="border-bottom:none; padding-bottom:0;">
+      <div>
+        <div class="match-side"><%= m.side1.map(p=>p.name).join(' & ') || 'TBD' %></div>
+        <div class="muted small">vs</div>
+        <div class="match-side"><%= m.side2.map(p=>p.name).join(' & ') || 'TBD' %></div>
+      </div>
+      <div class="match-status">
+        <% if (m.statusInfo.isComplete) { %><span class="pill complete"><%= m.statusInfo.closedNote %></span>
+        <% } else if (m.statusInfo.thru > 0) { %><span class="pill live">LIVE</span><br/><%= m.statusInfo.statusText %>
+        <% } else { %><span class="pill scheduled">Not started</span><% } %>
+      </div>
+    </div>
+    <a class="btn secondary small mt" href="/matches/<%= m.id %>">Open scorecard →</a>
+  </div>
+<% }) %>
+
+<% if (!matches.length) { %><div class="card"><p class="muted">No matches scheduled for this round yet.</p></div><% } %>
+
+<% if (user.is_admin) { %>
+<div class="card">
+  <h2>Add a match</h2>
+  <form method="post" action="/rounds/<%= round.id %>/matches">
+    <div class="grid-2">
+      <div class="field">
+        <label>Format</label>
+        <select name="format">
+          <option value="singles">Singles</option>
+          <option value="fourball">Fourball (better ball)</option>
+          <option value="foursomes">Foursomes (alternate shot)</option>
+          <option value="scramble">Scramble</option>
+        </select>
+      </div>
+      <div class="field"><label>Points</label><input type="number" step="0.5" min="0.5" name="points" value="1" /></div>
+    </div>
+    <div class="grid-2">
+      <div class="field">
+        <label>Side 1 players</label>
+        <div class="checkbox-list">
+          <% users.forEach(function(u) { %>
+            <label><input type="checkbox" name="side1" value="<%= u.id %>" /> <%= u.name %></label>
+          <% }) %>
+        </div>
+      </div>
+      <div class="field">
+        <label>Side 2 players</label>
+        <div class="checkbox-list">
+          <% users.forEach(function(u) { %>
+            <label><input type="checkbox" name="side2" value="<%= u.id %>" /> <%= u.name %></label>
+          <% }) %>
+        </div>
+      </div>
+    </div>
+    <div class="field"><label>Notes (optional)</label><input type="text" name="notes" placeholder="Tee time, hole, etc." /></div>
+    <button class="btn" type="submit">Add match</button>
+  </form>
+</div>
+<% } %>
+
+<%- include('partials/footer') %>
