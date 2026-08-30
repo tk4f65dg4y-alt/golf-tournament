@@ -13,9 +13,12 @@
     <span class="nav-brand">⛳ <%= siteName %></span>
     <a class="link <%= typeof active !== 'undefined' && active === 'home' ? 'active' : '' %>" href="/">Leaderboard</a>
     <a class="link <%= typeof active !== 'undefined' && active === 'rounds' ? 'active' : '' %>" href="/rounds">Rounds</a>
+    <a class="link <%= typeof active !== 'undefined' && active === 'courses' ? 'active' : '' %>" href="/courses">Courses</a>
     <a class="link <%= typeof active !== 'undefined' && active === 'players' ? 'active' : '' %>" href="/players">Players</a>
+    <a class="link <%= typeof active !== 'undefined' && active === 'stats' ? 'active' : '' %>" href="/stats">Stats</a>
     <a class="link <%= typeof active !== 'undefined' && active === 'photos' ? 'active' : '' %>" href="/photos">Photos</a>
     <a class="link <%= typeof active !== 'undefined' && active === 'sidebets' ? 'active' : '' %>" href="/sidebets">Side Bets</a>
+    <a class="link" href="/me">Me</a>
     <% if (user.is_admin) { %>
       <a class="link <%= typeof active !== 'undefined' && active === 'admin' ? 'active' : '' %>" href="/admin">Admin</a>
     <% } %>

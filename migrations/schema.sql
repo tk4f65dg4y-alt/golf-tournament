@@ -22,14 +22,34 @@ CREATE TABLE IF NOT EXISTS users (
 -- Migration for databases created before is_captain existed.
 ALTER TABLE users ADD COLUMN IF NOT EXISTS is_captain BOOLEAN NOT NULL DEFAULT FALSE;
 
+CREATE TABLE IF NOT EXISTS courses (
+  id SERIAL PRIMARY KEY,
+  name TEXT NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS course_holes (
+  id SERIAL PRIMARY KEY,
+  course_id INTEGER NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
+  hole_number INTEGER NOT NULL CHECK (hole_number BETWEEN 1 AND 18),
+  par INTEGER NOT NULL DEFAULT 4,
+  stroke_index INTEGER NOT NULL CHECK (stroke_index BETWEEN 1 AND 18),
+  UNIQUE (course_id, hole_number),
+  UNIQUE (course_id, stroke_index)
+);
+
 CREATE TABLE IF NOT EXISTS rounds (
   id SERIAL PRIMARY KEY,
   name TEXT NOT NULL,
   course TEXT,
+  course_id INTEGER REFERENCES courses(id) ON DELETE SET NULL,
   round_date DATE,
   format_note TEXT,
   sort_order INTEGER NOT NULL DEFAULT 0
 );
+
+-- Migration for databases created before course_id existed.
+ALTER TABLE rounds ADD COLUMN IF NOT EXISTS course_id INTEGER REFERENCES courses(id) ON DELETE SET NULL;
 
 CREATE TABLE IF NOT EXISTS matches (
   id SERIAL PRIMARY KEY,
@@ -70,6 +90,17 @@ CREATE TABLE IF NOT EXISTS player_hole_scores (
   hole_number INTEGER NOT NULL CHECK (hole_number BETWEEN 1 AND 18),
   strokes INTEGER,
   UNIQUE (match_id, user_id, hole_number)
+);
+
+-- One shared gross score per side per hole, for one-ball formats
+-- (foursomes/scramble) where individual players don't have separate scores.
+CREATE TABLE IF NOT EXISTS match_side_scores (
+  id SERIAL PRIMARY KEY,
+  match_id INTEGER NOT NULL REFERENCES matches(id) ON DELETE CASCADE,
+  side INTEGER NOT NULL, -- 1 or 2
+  hole_number INTEGER NOT NULL CHECK (hole_number BETWEEN 1 AND 18),
+  strokes INTEGER,
+  UNIQUE (match_id, side, hole_number)
 );
 
 CREATE TABLE IF NOT EXISTS side_bets (

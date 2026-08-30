@@ -36,10 +36,23 @@
 <% var side2Label = match.side2.map(p=>p.name.split(' ')[0]).join('/') || 'Side 2'; %>
 <% var allPlayers = match.side1.concat(match.side2); %>
 
+<% if (match.hasCourse) { %>
+  <div class="card">
+    <p class="mb0 small">⛳ Auto-scored from real strokes + handicap. <%= match.isOneBall ? 'One shared score per side each hole.' : 'Each player enters their own gross score.' %></p>
+    <p class="small muted mt" style="margin-bottom:0;">
+      <% if (match.isOneBall) { %>
+        Strokes given: <%= side1Label %> <%= match.totalAllowanceBySide[1] %> · <%= side2Label %> <%= match.totalAllowanceBySide[2] %>
+      <% } else { %>
+        Strokes given: <% allPlayers.forEach(function(p, i) { %><%= i > 0 ? ' · ' : '' %><%= p.name.split(' ')[0] %> <%= match.totalAllowanceByUserId[p.id] %><% }) %>
+      <% } %>
+    </p>
+  </div>
+<% } %>
+
 <% match.holeList.forEach(function(h) { %>
   <div class="hole-card" id="hole-<%= h.hole_number %>">
     <div class="hole-head">
-      <span class="hole-num">Hole <%= h.hole_number %></span>
+      <span class="hole-num">Hole <%= h.hole_number %><% if (match.hasCourse) { %> <span class="muted small">· Par <%= h.par %> · SI <%= h.stroke_index %></span><% } %></span>
       <span class="small muted">
         <% if (h.winner === 'team1') { %><%= side1Label %> won
         <% } else if (h.winner === 'team2') { %><%= side2Label %> won
@@ -47,33 +60,75 @@
         <% } %>
       </span>
     </div>
-    <% if (canEnter) { %>
-      <form method="post" action="/matches/<%= match.id %>/hole">
-        <input type="hidden" name="hole_number" value="<%= h.hole_number %>" />
-        <div class="winner-btns">
-          <button class="winner-btn <%= h.winner === 'team1' ? 'selected team1' : '' %>" type="submit" name="winner" value="team1"
-            style="<% if (h.winner==='team1') { %>background:<%= side1Color %>;border-color:<%= side1Color %>;color:#fff;<% } %>"><%= side1Label %></button>
-          <button class="winner-btn <%= h.winner === 'halved' ? 'selected halved' : '' %>" type="submit" name="winner" value="halved">AS</button>
-          <button class="winner-btn <%= h.winner === 'team2' ? 'selected team2' : '' %>" type="submit" name="winner" value="team2"
-            style="<% if (h.winner==='team2') { %>background:<%= side2Color %>;border-color:<%= side2Color %>;color:#fff;<% } %>"><%= side2Label %></button>
+
+    <% if (match.hasCourse) { %>
+      <% if (canEnter) { %>
+        <form method="post" action="/matches/<%= match.id %>/hole">
+          <input type="hidden" name="hole_number" value="<%= h.hole_number %>" />
+          <% if (match.isOneBall) { %>
+            <div class="strokes-row">
+              <div class="strokes-field">
+                <label><%= side1Label %><% if (match.strokesGivenBySide[1][h.hole_number] > 0) { %> <span title="strokes given">(<%= match.strokesGivenBySide[1][h.hole_number] %>•)</span><% } %></label>
+                <input type="number" min="1" max="15" name="strokes_side1" value="<%= h.grossBySide[1] || '' %>" />
+              </div>
+              <div class="strokes-field">
+                <label><%= side2Label %><% if (match.strokesGivenBySide[2][h.hole_number] > 0) { %> <span title="strokes given">(<%= match.strokesGivenBySide[2][h.hole_number] %>•)</span><% } %></label>
+                <input type="number" min="1" max="15" name="strokes_side2" value="<%= h.grossBySide[2] || '' %>" />
+              </div>
+            </div>
+          <% } else { %>
+            <div class="strokes-row">
+              <% allPlayers.forEach(function(p) { %>
+                <div class="strokes-field">
+                  <label><%= p.name.split(' ')[0] %><% if (match.strokesGivenByUserId[p.id][h.hole_number] > 0) { %> <span title="strokes given">(<%= match.strokesGivenByUserId[p.id][h.hole_number] %>•)</span><% } %></label>
+                  <input type="number" min="1" max="15" name="strokes_<%= p.id %>" value="<%= h.grossByUserId[p.id] || '' %>" />
+                </div>
+              <% }) %>
+            </div>
+          <% } %>
+          <button class="btn small mt hole-save" type="submit">Save</button>
+        </form>
+      <% } else { %>
+        <div class="strokes-row">
+          <% if (match.isOneBall) { %>
+            <% if (h.grossBySide[1]) { %><div class="strokes-field"><label><%= side1Label %></label><span><%= h.grossBySide[1] %></span></div><% } %>
+            <% if (h.grossBySide[2]) { %><div class="strokes-field"><label><%= side2Label %></label><span><%= h.grossBySide[2] %></span></div><% } %>
+          <% } else { %>
+            <% allPlayers.forEach(function(p) { %>
+              <% if (h.grossByUserId[p.id]) { %><div class="strokes-field"><label><%= p.name.split(' ')[0] %></label><span><%= h.grossByUserId[p.id] %></span></div><% } %>
+            <% }) %>
+          <% } %>
         </div>
+      <% } %>
+    <% } else { %>
+      <% if (canEnter) { %>
+        <form method="post" action="/matches/<%= match.id %>/hole">
+          <input type="hidden" name="hole_number" value="<%= h.hole_number %>" />
+          <div class="winner-btns">
+            <button class="winner-btn <%= h.winner === 'team1' ? 'selected team1' : '' %>" type="submit" name="winner" value="team1"
+              style="<% if (h.winner==='team1') { %>background:<%= side1Color %>;border-color:<%= side1Color %>;color:#fff;<% } %>"><%= side1Label %></button>
+            <button class="winner-btn <%= h.winner === 'halved' ? 'selected halved' : '' %>" type="submit" name="winner" value="halved">AS</button>
+            <button class="winner-btn <%= h.winner === 'team2' ? 'selected team2' : '' %>" type="submit" name="winner" value="team2"
+              style="<% if (h.winner==='team2') { %>background:<%= side2Color %>;border-color:<%= side2Color %>;color:#fff;<% } %>"><%= side2Label %></button>
+          </div>
+          <div class="strokes-row">
+            <% allPlayers.forEach(function(p) { %>
+              <div class="strokes-field">
+                <label><%= p.name.split(' ')[0] %></label>
+                <input type="number" min="1" max="15" name="strokes_<%= p.id %>" value="<%= match.strokesByHoleUser[h.hole_number + '_' + p.id] || '' %>" />
+              </div>
+            <% }) %>
+          </div>
+          <button class="btn small secondary hole-save" type="submit" name="winner" value="<%= h.winner || '' %>">Save strokes</button>
+        </form>
+      <% } else { %>
         <div class="strokes-row">
           <% allPlayers.forEach(function(p) { %>
-            <div class="strokes-field">
-              <label><%= p.name.split(' ')[0] %></label>
-              <input type="number" min="1" max="15" name="strokes_<%= p.id %>" value="<%= match.strokesByHoleUser[h.hole_number + '_' + p.id] || '' %>" />
-            </div>
+            <% var s = match.strokesByHoleUser[h.hole_number + '_' + p.id]; %>
+            <% if (s) { %><div class="strokes-field"><label><%= p.name.split(' ')[0] %></label><span><%= s %></span></div><% } %>
           <% }) %>
         </div>
-        <button class="btn small secondary hole-save" type="submit" name="winner" value="<%= h.winner || '' %>">Save strokes</button>
-      </form>
-    <% } else { %>
-      <div class="strokes-row">
-        <% allPlayers.forEach(function(p) { %>
-          <% var s = match.strokesByHoleUser[h.hole_number + '_' + p.id]; %>
-          <% if (s) { %><div class="strokes-field"><label><%= p.name.split(' ')[0] %></label><span><%= s %></span></div><% } %>
-        <% }) %>
-      </div>
+      <% } %>
     <% } %>
   </div>
 <% }) %>

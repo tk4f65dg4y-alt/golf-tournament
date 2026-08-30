@@ -8,8 +8,9 @@
       <div>
         <h2 class="mb0"><a href="/rounds/<%= r.id %>"><%= r.name %></a></h2>
         <p class="small muted" style="margin:4px 0 0;">
-          <%= r.course || '' %><% if (r.round_date) { %> · <%= new Date(r.round_date).toLocaleDateString(undefined, {month:'short', day:'numeric'}) %><% } %>
+          <%= r.course_name || r.course || '' %><% if (r.round_date) { %> · <%= new Date(r.round_date).toLocaleDateString(undefined, {month:'short', day:'numeric'}) %><% } %>
           <% if (r.format_note) { %> · <%= r.format_note %><% } %>
+          <% if (r.course_id) { %> · <span class="tag">auto handicap scoring</span><% } %>
         </p>
       </div>
       <div>
@@ -32,10 +33,20 @@
   <form method="post" action="/rounds">
     <div class="field"><label>Name</label><input type="text" name="name" required placeholder="Day 1 — Fourball" /></div>
     <div class="grid-2">
-      <div class="field"><label>Course</label><input type="text" name="course" placeholder="Pine Valley GC" /></div>
+      <div class="field">
+        <label>Course (for auto handicap scoring)</label>
+        <select name="course_id">
+          <option value="">— none / decide later —</option>
+          <% courses.forEach(function(c) { %>
+            <option value="<%= c.id %>"><%= c.name %></option>
+          <% }) %>
+        </select>
+      </div>
       <div class="field"><label>Date</label><input type="date" name="round_date" /></div>
     </div>
+    <div class="field"><label>Venue note (optional)</label><input type="text" name="course" placeholder="Back tees, meet at 7am, etc." /></div>
     <div class="field"><label>Format note (optional)</label><input type="text" name="format_note" placeholder="4 fourball matches" /></div>
+    <% if (!courses.length) { %><p class="small muted">No courses set up yet — <a href="/courses">add one</a> first if you want automatic handicap scoring.</p><% } %>
     <button class="btn" type="submit">Add round</button>
   </form>
 </div>

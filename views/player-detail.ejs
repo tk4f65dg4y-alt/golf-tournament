@@ -1,0 +1,63 @@
+<% var title = player.name; var active = 'players' %>
+<%- include('partials/header') %>
+<p><a href="/players">← All players</a></p>
+
+<div class="card team-card" style="--team-color: <%= player.team_color || '#f2b705' %>">
+  <h1><%= player.is_captain ? '👑 ' : '' %><%= player.name %><% if (isSelf) { %> <span class="tag">you</span><% } %></h1>
+  <p class="muted">
+    <% if (player.team_name) { %><span class="avatar-dot" style="background:<%= player.team_color %>"></span><%= player.team_name %> · <% } %>
+    Handicap <%= player.handicap %>
+    <% if (player.is_admin) { %> · <span class="tag">admin</span><% } %>
+  </p>
+</div>
+
+<div class="card">
+  <h2>Scoring summary</h2>
+  <% if (!summary.played) { %>
+    <p class="muted small">No scored holes yet — this fills in once <%= isSelf ? "you've" : "they've" %> played a round on a course with holes set up.</p>
+  <% } else { %>
+    <div class="table-scroll">
+    <table>
+      <thead><tr><th>Holes</th><th>🦅 Eagle+</th><th>🐦 Birdie</th><th>Par</th><th>Bogey</th><th>Worse</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><%= summary.played %></td>
+          <td><%= summary.eagle + summary.albatross %></td>
+          <td><%= summary.birdie %></td>
+          <td><%= summary.par %></td>
+          <td><%= summary.bogey %></td>
+          <td><%= summary.worse %></td>
+        </tr>
+      </tbody>
+    </table>
+    </div>
+  <% } %>
+</div>
+
+<% if (holes.length) { %>
+<div class="card">
+  <h2>Hole-by-hole</h2>
+  <div class="table-scroll">
+  <table>
+    <thead><tr><th>Round</th><th>Hole</th><th>Par</th><th>Strokes</th><th>Result</th></tr></thead>
+    <tbody>
+      <% holes.forEach(function(h) { %>
+        <tr>
+          <td class="small muted"><a href="/matches/<%= h.match_id %>"><%= h.round_name %></a></td>
+          <td><%= h.hole_number %></td>
+          <td><%= h.par %></td>
+          <td><%= h.strokes %></td>
+          <td>
+            <% if (h.diff <= -2) { %><span class="pill complete"><%= h.label %></span>
+            <% } else if (h.diff === -1) { %><span class="pill live"><%= h.label %></span>
+            <% } else { %><span class="pill scheduled"><%= h.label %></span><% } %>
+          </td>
+        </tr>
+      <% }) %>
+    </tbody>
+  </table>
+  </div>
+</div>
+<% } %>
+
+<%- include('partials/footer') %>

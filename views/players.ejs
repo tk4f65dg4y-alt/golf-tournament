@@ -13,7 +13,7 @@
       <tbody>
         <% roster.forEach(function(u) { %>
           <tr>
-            <td><%= u.is_captain ? '👑 ' : '' %><%= u.name %><% if (u.is_admin) { %> <span class="tag">admin</span><% } %></td>
+            <td><a href="/players/<%= u.id %>"><%= u.is_captain ? '👑 ' : '' %><%= u.name %></a><% if (u.is_admin) { %> <span class="tag">admin</span><% } %></td>
             <td><%= u.handicap %></td>
           </tr>
         <% }) %>
@@ -32,7 +32,7 @@
       <thead><tr><th>Name</th><th>Handicap</th></tr></thead>
       <tbody>
         <% unassigned.forEach(function(u) { %>
-          <tr><td><%= u.name %></td><td><%= u.handicap %></td></tr>
+          <tr><td><a href="/players/<%= u.id %>"><%= u.name %></a></td><td><%= u.handicap %></td></tr>
         <% }) %>
       </tbody>
     </table>

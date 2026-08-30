@@ -1,0 +1,38 @@
+<% var title = 'Courses'; var active = 'courses' %>
+<%- include('partials/header') %>
+<h1>Courses</h1>
+<p class="muted small">Add each course you're playing with its par and stroke index (hole difficulty rank) per hole — that's what powers automatic handicap strokes and net scoring on the scorecard.</p>
+
+<% courses.forEach(function(c) { %>
+  <div class="card">
+    <div class="flex between">
+      <div>
+        <h2 class="mb0"><a href="/courses/<%= c.id %>"><%= c.name %></a></h2>
+        <p class="small muted" style="margin:4px 0 0;"><%= c.hole_count %>/18 holes configured</p>
+      </div>
+      <div>
+        <a class="btn secondary small" href="/courses/<%= c.id %>">Edit holes</a>
+        <% if (user.is_admin) { %>
+        <form method="post" action="/courses/<%= c.id %>/delete" style="display:inline" onsubmit="return confirm('Delete this course? Any rounds using it will fall back to manual scoring.')">
+          <button class="btn danger small" type="submit">Delete</button>
+        </form>
+        <% } %>
+      </div>
+    </div>
+  </div>
+<% }) %>
+
+<% if (!courses.length) { %><div class="card"><p class="muted">No courses added yet.</p></div><% } %>
+
+<% if (user.is_admin) { %>
+<div class="card">
+  <h2>Add a course</h2>
+  <form method="post" action="/courses">
+    <div class="field"><label>Course name</label><input type="text" name="name" required placeholder="Pine Valley GC" /></div>
+    <button class="btn" type="submit">Add course</button>
+  </form>
+  <p class="small muted mt">Starts with a standard par-72 layout and a default stroke index you can edit — no need to fill in 18 blank rows.</p>
+</div>
+<% } %>
+
+<%- include('partials/footer') %>

@@ -6,8 +6,12 @@ const { computeMatchStatus } = require('../src/matchLogic');
 
 router.get('/rounds', requireAuth, async (req, res, next) => {
   try {
-    const { rows: rounds } = await pool.query('SELECT * FROM rounds ORDER BY sort_order, round_date NULLS LAST, id');
-    res.render('rounds', { rounds });
+    const { rows: rounds } = await pool.query(
+      `SELECT r.*, c.name AS course_name FROM rounds r LEFT JOIN courses c ON c.id = r.course_id
+       ORDER BY r.sort_order, r.round_date NULLS LAST, r.id`
+    );
+    const { rows: courses } = await pool.query('SELECT * FROM courses ORDER BY name');
+    res.render('rounds', { rounds, courses });
   } catch (err) {
     next(err);
   }
@@ -15,12 +19,12 @@ router.get('/rounds', requireAuth, async (req, res, next) => {
 
 router.post('/rounds', requireAdmin, async (req, res, next) => {
   try {
-    const { name, course, round_date, format_note } = req.body;
+    const { name, course, course_id, round_date, format_note } = req.body;
     if (!name || !name.trim()) return res.redirect('/rounds');
     const { rows } = await pool.query('SELECT COALESCE(MAX(sort_order), 0) + 1 AS n FROM rounds');
     await pool.query(
-      `INSERT INTO rounds (name, course, round_date, format_note, sort_order) VALUES ($1, $2, $3, $4, $5)`,
-      [name.trim(), course || null, round_date || null, format_note || null, rows[0].n]
+      `INSERT INTO rounds (name, course, course_id, round_date, format_note, sort_order) VALUES ($1, $2, $3, $4, $5, $6)`,
+      [name.trim(), course || null, course_id ? Number(course_id) : null, round_date || null, format_note || null, rows[0].n]
     );
     res.redirect('/rounds');
   } catch (err) {
@@ -40,9 +44,19 @@ router.post('/rounds/:id/delete', requireAdmin, async (req, res, next) => {
 router.get('/rounds/:id', requireAuth, async (req, res, next) => {
   try {
     const roundId = req.params.id;
-    const { rows: roundRows } = await pool.query('SELECT * FROM rounds WHERE id = $1', [roundId]);
+    const { rows: roundRows } = await pool.query(
+      `SELECT r.*, c.name AS course_name FROM rounds r LEFT JOIN courses c ON c.id = r.course_id WHERE r.id = $1`,
+      [roundId]
+    );
     if (!roundRows.length) return res.status(404).render('error', { message: 'Round not found.' });
     const round = roundRows[0];
+
+    let courseHoleCount = 0;
+    if (round.course_id) {
+      const { rows: chRows } = await pool.query('SELECT COUNT(*)::int AS n FROM course_holes WHERE course_id = $1', [round.course_id]);
+      courseHoleCount = chRows[0].n;
+    }
+    round.hasFullCourse = courseHoleCount === 18;
 
     const { rows: matches } = await pool.query(
       `SELECT * FROM matches WHERE round_id = $1 ORDER BY sort_order, id`,
@@ -69,8 +83,19 @@ router.get('/rounds/:id', requireAuth, async (req, res, next) => {
 
     const { rows: teams } = await pool.query('SELECT * FROM teams ORDER BY id');
     const { rows: users } = await pool.query('SELECT * FROM users ORDER BY name');
+    const { rows: courses } = await pool.query('SELECT * FROM courses ORDER BY name');
 
-    res.render('round-detail', { round, matches, teams, users });
+    res.render('round-detail', { round, matches, teams, users, courses });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.post('/rounds/:id/course', requireAdmin, async (req, res, next) => {
+  try {
+    const { course_id } = req.body;
+    await pool.query('UPDATE rounds SET course_id = $1 WHERE id = $2', [course_id ? Number(course_id) : null, req.params.id]);
+    res.redirect(`/rounds/${req.params.id}`);
   } catch (err) {
     next(err);
   }

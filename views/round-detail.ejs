@@ -2,7 +2,28 @@
 <%- include('partials/header') %>
 <p><a href="/rounds">← All rounds</a></p>
 <h1><%= round.name %></h1>
-<p class="muted"><%= round.course || '' %><% if (round.round_date) { %> · <%= new Date(round.round_date).toLocaleDateString(undefined, {month:'long', day:'numeric', year:'numeric'}) %><% } %></p>
+<p class="muted"><%= round.course_name || round.course || '' %><% if (round.round_date) { %> · <%= new Date(round.round_date).toLocaleDateString(undefined, {month:'long', day:'numeric', year:'numeric'}) %><% } %></p>
+
+<div class="card">
+  <% if (round.course_id && round.hasFullCourse) { %>
+    <p class="mb0">⛳ <strong><%= round.course_name %></strong> is set — matches in this round auto-score from real handicap strokes. <a href="/courses/<%= round.course_id %>">View/edit holes</a></p>
+  <% } else if (round.course_id) { %>
+    <p class="mb0">⚠️ <strong><%= round.course_name %></strong> is assigned but doesn't have all 18 holes configured yet — matches will use manual scoring until it's finished. <a href="/courses/<%= round.course_id %>">Finish course setup</a></p>
+  <% } else { %>
+    <p class="mb0">No course assigned to this round yet — matches use manual "tap who won the hole" scoring. Assign one for automatic handicap-based scoring.</p>
+  <% } %>
+  <% if (user.is_admin) { %>
+  <form method="post" action="/rounds/<%= round.id %>/course" class="flex gap mt wrap">
+    <select name="course_id" style="width:auto; flex:1; min-width:180px;">
+      <option value="">— none —</option>
+      <% courses.forEach(function(c) { %>
+        <option value="<%= c.id %>" <%= round.course_id === c.id ? 'selected' : '' %>><%= c.name %></option>
+      <% }) %>
+    </select>
+    <button class="btn small" type="submit">Set course</button>
+  </form>
+  <% } %>
+</div>
 
 <% matches.forEach(function(m) { %>
   <div class="card">
