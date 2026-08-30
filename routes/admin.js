@@ -38,17 +38,31 @@ router.post('/admin/teams/:id/delete', requireAdmin, async (req, res, next) => {
 
 router.post('/admin/users/:id', requireAdmin, async (req, res, next) => {
   try {
-    const { name, handicap, team_id, is_admin } = req.body;
+    const { name, handicap, team_id, is_admin, is_captain } = req.body;
+    const userId = req.params.id;
+    const teamId = team_id ? Number(team_id) : null;
+    const wantsCaptain = is_captain === 'on';
+
     await pool.query(
-      `UPDATE users SET name = $1, handicap = $2, team_id = $3, is_admin = $4 WHERE id = $5`,
+      `UPDATE users SET name = $1, handicap = $2, team_id = $3, is_admin = $4, is_captain = $5 WHERE id = $6`,
       [
         name && name.trim() ? name.trim() : req.body.currentName,
         handicap === '' || handicap === undefined ? 0 : Number(handicap),
-        team_id ? Number(team_id) : null,
+        teamId,
         is_admin === 'on',
-        req.params.id
+        Boolean(wantsCaptain && teamId),
+        userId
       ]
     );
+
+    // Only one captain per team — checking a new captain clears the old one.
+    if (wantsCaptain && teamId) {
+      await pool.query(
+        `UPDATE users SET is_captain = FALSE WHERE team_id = $1 AND id != $2`,
+        [teamId, userId]
+      );
+    }
+
     res.redirect('/admin');
   } catch (err) {
     next(err);

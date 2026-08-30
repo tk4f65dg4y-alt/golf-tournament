@@ -14,9 +14,13 @@ CREATE TABLE IF NOT EXISTS users (
   handicap NUMERIC(4,1) NOT NULL DEFAULT 0,
   team_id INTEGER REFERENCES teams(id) ON DELETE SET NULL,
   is_admin BOOLEAN NOT NULL DEFAULT FALSE,
+  is_captain BOOLEAN NOT NULL DEFAULT FALSE,
   avatar_url TEXT,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+-- Migration for databases created before is_captain existed.
+ALTER TABLE users ADD COLUMN IF NOT EXISTS is_captain BOOLEAN NOT NULL DEFAULT FALSE;
 
 CREATE TABLE IF NOT EXISTS rounds (
   id SERIAL PRIMARY KEY,

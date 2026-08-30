@@ -12,12 +12,12 @@
   <div class="score-hero mt">
     <div class="team-score">
       <div class="num" style="color: <%= match.side1[0] ? match.side1[0].team_color : '#1b6b3a' %>"><%= match.statusInfo.team1Wins %></div>
-      <div class="label"><%= match.side1.map(p=>p.name).join(' & ') || 'TBD' %></div>
+      <div class="label"><%= playerNames(match.side1) || 'TBD' %></div>
     </div>
     <div class="vs">vs</div>
     <div class="team-score">
       <div class="num" style="color: <%= match.side2[0] ? match.side2[0].team_color : '#c9962c' %>"><%= match.statusInfo.team2Wins %></div>
-      <div class="label"><%= match.side2.map(p=>p.name).join(' & ') || 'TBD' %></div>
+      <div class="label"><%= playerNames(match.side2) || 'TBD' %></div>
     </div>
   </div>
   <p style="text-align:center; font-weight:700; margin-top:10px;">

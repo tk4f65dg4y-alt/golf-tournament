@@ -14,7 +14,7 @@ async function loadMatchBundle(matchId) {
   const match = matchRows[0];
 
   const { rows: players } = await pool.query(
-    `SELECT mp.side, u.id, u.name, t.name AS team_name, t.color AS team_color
+    `SELECT mp.side, u.id, u.name, u.is_captain, t.name AS team_name, t.color AS team_color
      FROM match_players mp JOIN users u ON u.id = mp.user_id
      LEFT JOIN teams t ON t.id = u.team_id
      WHERE mp.match_id = $1 ORDER BY mp.side, u.name`,

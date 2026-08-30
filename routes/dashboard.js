@@ -6,6 +6,10 @@ const { requireAuth } = require('../src/auth');
 router.get('/', requireAuth, async (req, res, next) => {
   try {
     const { rows: teams } = await pool.query('SELECT * FROM teams ORDER BY id');
+    const { rows: captains } = await pool.query('SELECT team_id, name FROM users WHERE is_captain = TRUE');
+    const captainByTeam = {};
+    for (const c of captains) captainByTeam[c.team_id] = c.name;
+    for (const t of teams) t.captainName = captainByTeam[t.id] || null;
 
     const { rows: matches } = await pool.query(
       `SELECT m.*, r.name AS round_name, r.sort_order AS round_sort
@@ -15,7 +19,7 @@ router.get('/', requireAuth, async (req, res, next) => {
 
     for (const m of matches) {
       const { rows: players } = await pool.query(
-        `SELECT mp.side, u.id, u.name, u.team_id
+        `SELECT mp.side, u.id, u.name, u.team_id, u.is_captain
          FROM match_players mp JOIN users u ON u.id = mp.user_id
          WHERE mp.match_id = $1`,
         [m.id]

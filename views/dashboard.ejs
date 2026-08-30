@@ -9,18 +9,42 @@
       <% } else { %>Ask your organizer to set up teams and rounds.<% } %>
     </p>
   </div>
-<% } else { %>
-  <div class="card">
+<% } else {
+  var t1 = teams[0], t2 = teams[1];
+  var pct = pointsTotal ? Math.round((pointsPlayed / pointsTotal) * 100) : 0;
+%>
+  <div class="scoreboard" style="--team1-color: <%= t1.color %>; --team2-color: <%= t2.color %>;">
     <div class="score-hero">
-      <% teams.forEach(function(t, i) { %>
-        <div class="team-score">
-          <div class="num" style="color: <%= t.color %>"><%= (teamTotals[t.id] || 0) %></div>
-          <div class="label"><%= t.name %></div>
-        </div>
-        <% if (i === 0 && teams.length > 1) { %><div class="vs">vs</div><% } %>
+      <div class="team-score" style="color: <%= t1.color %>">
+        <div class="flag" style="background: <%= t1.color %>"></div>
+        <div class="num"><%= teamTotals[t1.id] || 0 %></div>
+        <div class="label" style="color: var(--ink)"><%= t1.name %></div>
+        <% if (t1.captainName) { %><div class="captain">👑 Capt. <%= t1.captainName %></div><% } %>
+      </div>
+      <div class="vs">VS</div>
+      <div class="team-score" style="color: <%= t2.color %>">
+        <div class="flag" style="background: <%= t2.color %>"></div>
+        <div class="num"><%= teamTotals[t2.id] || 0 %></div>
+        <div class="label" style="color: var(--ink)"><%= t2.name %></div>
+        <% if (t2.captainName) { %><div class="captain">👑 Capt. <%= t2.captainName %></div><% } %>
+      </div>
+    </div>
+    <p class="muted small" style="text-align:center; margin: 14px 0 0; text-transform: uppercase; letter-spacing: 0.04em; font-weight:700;">
+      <%= pointsPlayed %> of <%= pointsTotal %> points decided
+    </p>
+    <div class="progress-track"><div class="progress-fill" style="width: <%= pct %>%"></div></div>
+  </div>
+<% } %>
+
+<% if (liveMatches.length) { %>
+  <div class="ticker-wrap">
+    <div class="ticker-track">
+      <% [1,2].forEach(function() { %>
+        <% liveMatches.forEach(function(m) { %>
+          <span class="ticker-item"><span class="dot"></span><%= m.round_name %>: <%= playerNames(m.side1) %> vs <%= playerNames(m.side2) %> — <%= m.closed_note || 'in progress' %></span>
+        <% }) %>
       <% }) %>
     </div>
-    <p class="muted small" style="text-align:center; margin-top:10px;"><%= pointsPlayed %> of <%= pointsTotal %> points decided</p>
   </div>
 <% } %>
 
@@ -32,7 +56,7 @@
         <div class="match-row">
           <div>
             <div class="small muted"><%= m.round_name %> · <%= m.format %></div>
-            <div class="match-side"><%= m.side1.map(p=>p.name).join(' & ') %> <span class="muted">vs</span> <%= m.side2.map(p=>p.name).join(' & ') %></div>
+            <div class="match-side"><%= playerNames(m.side1) %> <span class="muted">vs</span> <%= playerNames(m.side2) %></div>
           </div>
           <div class="match-status"><span class="pill live">LIVE</span><br/><%= m.closed_note || '' %></div>
         </div>
@@ -49,7 +73,7 @@
         <div class="match-row">
           <div>
             <div class="small muted"><%= m.round_name %> · <%= m.format %></div>
-            <div class="match-side"><%= m.side1.map(p=>p.name).join(' & ') || 'TBD' %> <span class="muted">vs</span> <%= m.side2.map(p=>p.name).join(' & ') || 'TBD' %></div>
+            <div class="match-side"><%= playerNames(m.side1) || 'TBD' %> <span class="muted">vs</span> <%= playerNames(m.side2) || 'TBD' %></div>
           </div>
           <div class="match-status"><span class="pill scheduled">Not started</span></div>
         </div>
@@ -66,7 +90,7 @@
         <div class="match-row">
           <div>
             <div class="small muted"><%= m.round_name %> · <%= m.format %></div>
-            <div class="match-side"><%= m.side1.map(p=>p.name).join(' & ') %> <span class="muted">vs</span> <%= m.side2.map(p=>p.name).join(' & ') %></div>
+            <div class="match-side"><%= playerNames(m.side1) %> <span class="muted">vs</span> <%= playerNames(m.side2) %></div>
           </div>
           <div class="match-status"><span class="pill complete"><%= m.closed_note %></span></div>
         </div>

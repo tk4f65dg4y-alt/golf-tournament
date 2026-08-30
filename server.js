@@ -45,6 +45,9 @@ app.use(
 app.use(loadUser);
 
 app.locals.siteName = process.env.SITE_NAME || 'Golf Tournament';
+app.locals.playerNames = function (players) {
+  return (players || []).map((p) => (p.is_captain ? '👑 ' : '') + p.name).join(' & ');
+};
 
 app.use(authRoutes);
 app.use(dashboardRoutes);

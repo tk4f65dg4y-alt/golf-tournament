@@ -57,7 +57,7 @@ router.get('/rounds/:id', requireAuth, async (req, res, next) => {
       m.statusInfo = computeMatchStatus(holes, Number(m.points));
 
       const { rows: players } = await pool.query(
-        `SELECT mp.side, u.id, u.name, u.team_id, t.name AS team_name
+        `SELECT mp.side, u.id, u.name, u.team_id, u.is_captain, t.name AS team_name
          FROM match_players mp JOIN users u ON u.id = mp.user_id
          LEFT JOIN teams t ON t.id = u.team_id
          WHERE mp.match_id = $1 ORDER BY mp.side, u.name`,

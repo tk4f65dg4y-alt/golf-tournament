@@ -41,8 +41,9 @@
   <% users.forEach(function(u) { %>
     <form id="user-form-<%= u.id %>" method="post" action="/admin/users/<%= u.id %>"></form>
   <% }) %>
+  <div class="table-scroll">
   <table>
-    <thead><tr><th>Name</th><th>Email</th><th>Handicap</th><th>Team</th><th>Admin</th><th></th></tr></thead>
+    <thead><tr><th>Name</th><th>Email</th><th>Handicap</th><th>Team</th><th>Captain</th><th>Admin</th><th></th></tr></thead>
     <tbody>
       <% users.forEach(function(u) { %>
         <% var fid = 'user-form-' + u.id %>
@@ -61,12 +62,15 @@
               <% }) %>
             </select>
           </td>
+          <td title="One captain per team — checking this unchecks any other captain on the same team."><input form="<%= fid %>" type="checkbox" name="is_captain" <%= u.is_captain ? 'checked' : '' %> /> 👑</td>
           <td><input form="<%= fid %>" type="checkbox" name="is_admin" <%= u.is_admin ? 'checked' : '' %> /></td>
           <td><button form="<%= fid %>" class="btn small" type="submit">Save</button></td>
         </tr>
       <% }) %>
     </tbody>
   </table>
+  </div>
+  <p class="small muted mt">👑 Captain is per-team — checking it for someone automatically un-captains anyone else already on that team (save each row you change).</p>
 </div>
 
 <%- include('partials/footer') %>

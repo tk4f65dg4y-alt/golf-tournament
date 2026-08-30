@@ -5,15 +5,19 @@
   <div class="card"><p class="muted">No teams yet. <% if (user.is_admin) { %><a href="/admin">Set up teams</a>.<% } %></p></div>
 <% } %>
 <% teams.forEach(function(t) { %>
-  <div class="card">
+  <% var roster = users.filter(u => u.team_id === t.id).sort((a,b) => (b.is_captain - a.is_captain) || a.name.localeCompare(b.name)) %>
+  <div class="card team-card" style="--team-color: <%= t.color %>">
     <h2><span class="avatar-dot" style="background:<%= t.color %>"></span><%= t.name %></h2>
     <table>
       <thead><tr><th>Name</th><th>Handicap</th></tr></thead>
       <tbody>
-        <% users.filter(u => u.team_id === t.id).forEach(function(u) { %>
-          <tr><td><%= u.name %><% if (u.is_admin) { %> <span class="tag">admin</span><% } %></td><td><%= u.handicap %></td></tr>
+        <% roster.forEach(function(u) { %>
+          <tr>
+            <td><%= u.is_captain ? '👑 ' : '' %><%= u.name %><% if (u.is_admin) { %> <span class="tag">admin</span><% } %></td>
+            <td><%= u.handicap %></td>
+          </tr>
         <% }) %>
-        <% if (!users.filter(u => u.team_id === t.id).length) { %>
+        <% if (!roster.length) { %>
           <tr><td colspan="2" class="muted small">No players assigned yet.</td></tr>
         <% } %>
       </tbody>
