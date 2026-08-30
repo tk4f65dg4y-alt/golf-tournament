@@ -19,6 +19,12 @@ const adminRoutes = require('./routes/admin');
 
 const app = express();
 
+// Railway (and most PaaS hosts) terminate HTTPS at an edge proxy and forward
+// to the app over plain HTTP. Without this, Express can't tell the request
+// was actually HTTPS, so a "secure" session cookie never gets set on the
+// browser and every login immediately looks logged-out.
+app.set('trust proxy', 1);
+
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
 
@@ -37,7 +43,11 @@ app.use(
     saveUninitialized: false,
     cookie: {
       maxAge: 1000 * 60 * 60 * 24 * 30, // 30 days
-      secure: process.env.NODE_ENV === 'production' && process.env.DISABLE_SECURE_COOKIE !== 'true'
+      // 'auto' checks req.secure, which (thanks to trust proxy above) correctly
+      // reflects the original client<->edge connection, not the internal
+      // proxy<->app hop. DISABLE_SECURE_COOKIE is an escape hatch for hosts
+      // that don't sit behind a TLS-terminating proxy at all.
+      secure: process.env.DISABLE_SECURE_COOKIE === 'true' ? false : 'auto'
     }
   })
 );
