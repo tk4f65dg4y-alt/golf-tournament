@@ -1,0 +1,73 @@
+<% var title = 'Today'; var active = 'home' %>
+<%- include('partials/header') %>
+
+<div class="card">
+  <div class="score-hero">
+    <div class="team-score" style="color: var(--casey)">
+      <div class="num"><%= scores.confirmed.casey %></div>
+      <div class="label">Team Casey</div>
+    </div>
+    <div class="vs">vs</div>
+    <div class="team-score" style="color: var(--reggel)">
+      <div class="num"><%= scores.confirmed.reggel %></div>
+      <div class="label">Team Reggel</div>
+    </div>
+  </div>
+  <p class="projected-note muted small">
+    Projected if all in-progress matches held: <strong style="color:var(--casey)"><%= scores.projected.casey %></strong> – <strong style="color:var(--reggel)"><%= scores.projected.reggel %></strong>
+  </p>
+  <% if (cupDecided) { %>
+    <p class="projected-note" style="font-weight:800; color: var(--gold);">🏆 The Cup is decided!</p>
+  <% } else if (tiedAt3) { %>
+    <p class="projected-note" style="font-weight:800; color: var(--gold);">Tied 3–3 — sudden death: Casey v Reggel, Village 1st.</p>
+  <% } %>
+</div>
+
+<% if (!user.readOnly) { %>
+  <% if (currentBundle) { %>
+    <% var b = currentBundle; var nextHole = Math.min(b.state.holesPlayed + 1, b.match.holeCount); %>
+    <a class="card" style="display:block; text-decoration:none; color:inherit; border: 2px solid var(--green);" href="/matches/<%= b.match.id %>/score?hole=<%= nextHole %>">
+      <h2 class="mb0">Your match</h2>
+      <p class="mt" style="margin-bottom:4px;">
+        <%= b.sideAPlayers.map(p=>p.name).join(' & ') %> <span class="muted">v</span> <%= b.sideBPlayers.map(p=>p.name).join(' & ') %>
+      </p>
+      <p class="small muted">
+        <%= b.course.name %> · Group <%= b.match.teeGroup %> ·
+        <% if (b.state.isComplete) { %>Final: <%= b.state.closedResult %>
+        <% } else if (b.state.holesPlayed === 0) { %>Not started — tap to score hole 1
+        <% } else { %><%= b.state.leadingSide === null ? 'All square' : (b.state.leadingSide === 'A' ? b.sideAPlayers.map(p=>p.name.split(' ')[0]).join('/') : b.sideBPlayers.map(p=>p.name.split(' ')[0]).join('/')) + ' ' + b.state.diff + ' up' %> thru <%= b.state.holesPlayed %>
+        <% } %>
+      </p>
+      <p class="btn small mt" style="display:inline-block;"><%= b.state.isComplete ? 'View match →' : 'Score hole ' + nextHole + ' →' %></p>
+    </a>
+  <% } %>
+
+  <% if (myMatches.length > 1) { %>
+    <div class="card">
+      <h2>Your matches today</h2>
+      <% myMatches.forEach(function(mb) { %>
+        <div class="match-row">
+          <div>
+            <div class="small muted"><%= mb.match.session === 'morning' ? 'Morning' : 'Afternoon' %> · <%= mb.course.name %></div>
+            <div class="match-side"><%= mb.sideAPlayers.map(p=>p.name).join(' & ') %> v <%= mb.sideBPlayers.map(p=>p.name).join(' & ') %></div>
+          </div>
+          <a class="btn secondary small" href="/matches/<%= mb.match.id %>">Open</a>
+        </div>
+      <% }) %>
+    </div>
+  <% } %>
+<% } %>
+
+<div class="card">
+  <h2>Today's timings</h2>
+  <% if (!timings.length) { %>
+    <p class="muted small">Not published yet — check back closer to the day.</p>
+  <% } else { %>
+    <% timings.forEach(function(t) { %>
+      <div class="match-row"><strong><%= t.time %></strong>&nbsp;&nbsp;<%= t.label %></div>
+    <% }) %>
+  <% } %>
+  <% if (user.isCaptain) { %><a class="small mt" style="display:inline-block;" href="/captain">Edit timings →</a><% } %>
+</div>
+
+<%- include('partials/footer') %>

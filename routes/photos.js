@@ -4,7 +4,8 @@ const crypto = require('crypto');
 const multer = require('multer');
 const router = express.Router();
 const { pool } = require('../src/db');
-const { requireAuth } = require('../src/auth');
+const { requireAuth, requirePlayer } = require('../src/auth');
+const { findPlayer } = require('../src/data');
 
 const uploadDir = process.env.UPLOAD_DIR || path.join(__dirname, '..', 'uploads');
 
@@ -25,26 +26,29 @@ const upload = multer({
   }
 });
 
+function withUploaderNames(photos) {
+  for (const p of photos) {
+    const uploader = findPlayer(p.uploaded_by);
+    p.uploader_name = uploader ? uploader.name : 'Someone';
+  }
+  return photos;
+}
+
 router.get('/photos', requireAuth, async (req, res, next) => {
   try {
-    const { rows: photos } = await pool.query(
-      `SELECT p.*, u.name AS uploader_name FROM photos p LEFT JOIN users u ON u.id = p.uploaded_by
-       ORDER BY p.created_at DESC`
-    );
-    res.render('photos', { photos, error: null });
+    const { rows: photos } = await pool.query('SELECT * FROM photos ORDER BY created_at DESC');
+    res.render('photos', { photos: withUploaderNames(photos), error: null });
   } catch (err) {
     next(err);
   }
 });
 
-router.post('/photos', requireAuth, (req, res, next) => {
+router.post('/photos', requirePlayer, (req, res, next) => {
   upload.single('photo')(req, res, async (err) => {
     try {
       if (err) {
-        const { rows: photos } = await pool.query(
-          `SELECT p.*, u.name AS uploader_name FROM photos p LEFT JOIN users u ON u.id = p.uploaded_by ORDER BY p.created_at DESC`
-        );
-        return res.render('photos', { photos, error: err.message });
+        const { rows: photos } = await pool.query('SELECT * FROM photos ORDER BY created_at DESC');
+        return res.render('photos', { photos: withUploaderNames(photos), error: err.message });
       }
       if (!req.file) return res.redirect('/photos');
       await pool.query(
@@ -58,12 +62,12 @@ router.post('/photos', requireAuth, (req, res, next) => {
   });
 });
 
-router.post('/photos/:id/delete', requireAuth, async (req, res, next) => {
+router.post('/photos/:id/delete', requirePlayer, async (req, res, next) => {
   try {
     const { rows } = await pool.query('SELECT * FROM photos WHERE id = $1', [req.params.id]);
     const photo = rows[0];
     if (!photo) return res.redirect('/photos');
-    if (photo.uploaded_by !== req.user.id && !req.user.is_admin) {
+    if (photo.uploaded_by !== req.user.id && !req.user.isCaptain) {
       return res.status(403).render('error', { message: 'You can only delete your own photos.' });
     }
     await pool.query('DELETE FROM photos WHERE id = $1', [req.params.id]);

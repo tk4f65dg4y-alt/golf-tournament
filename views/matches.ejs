@@ -1,0 +1,35 @@
+<% var title = 'Matches'; var active = 'matches' %>
+<%- include('partials/header') %>
+<h1>Matches</h1>
+
+<div class="card">
+  <h2>Morning · Church Course · Singles</h2>
+  <% morning.forEach(function(b) { %>
+    <a href="/matches/<%= b.match.id %>" style="text-decoration:none; color:inherit;">
+      <div class="match-row">
+        <div style="flex:1;">
+          <div class="small muted">Match <%= b.match.id %> · Group <%= b.match.teeGroup %></div>
+          <div class="match-side"><%= b.sideAPlayers.map(p=>p.name).join(' & ') %> <span class="muted">v</span> <%= b.sideBPlayers.map(p=>p.name).join(' & ') %></div>
+        </div>
+        <div class="match-status"><%= matchStateText(b) %></div>
+      </div>
+    </a>
+  <% }) %>
+</div>
+
+<div class="card">
+  <h2>Afternoon · The Village · Fourball</h2>
+  <% afternoon.forEach(function(b) { %>
+    <a href="/matches/<%= b.match.id %>" style="text-decoration:none; color:inherit;">
+      <div class="match-row">
+        <div style="flex:1;">
+          <div class="small muted">Match <%= b.match.id %> · Group <%= b.match.teeGroup %></div>
+          <div class="match-side"><%= b.sideAPlayers.map(p=>p.name).join(' & ') %> <span class="muted">v</span> <%= b.sideBPlayers.map(p=>p.name).join(' & ') %></div>
+        </div>
+        <div class="match-status"><%= matchStateText(b) %></div>
+      </div>
+    </a>
+  <% }) %>
+</div>
+
+<%- include('partials/footer') %>

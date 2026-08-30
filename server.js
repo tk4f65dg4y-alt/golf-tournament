@@ -9,15 +9,14 @@ const { pool, initSchema } = require('./src/db');
 const { loadUser } = require('./src/auth');
 
 const authRoutes = require('./routes/auth');
-const dashboardRoutes = require('./routes/dashboard');
-const playerRoutes = require('./routes/players');
-const roundRoutes = require('./routes/rounds');
+const homeRoutes = require('./routes/home');
+const leaderboardRoutes = require('./routes/leaderboard');
 const matchRoutes = require('./routes/matches');
 const courseRoutes = require('./routes/courses');
-const statsRoutes = require('./routes/stats');
+const rulesRoutes = require('./routes/rules');
+const captainRoutes = require('./routes/captain');
 const { router: photoRoutes, uploadDir } = require('./routes/photos');
 const sidebetRoutes = require('./routes/sidebets');
-const adminRoutes = require('./routes/admin');
 
 const app = express();
 
@@ -44,7 +43,7 @@ app.use(
     resave: false,
     saveUninitialized: false,
     cookie: {
-      maxAge: 1000 * 60 * 60 * 24 * 30, // 30 days
+      maxAge: 1000 * 60 * 60 * 24 * 30, // 30 days — nobody should be logging back in on the 14th tee
       // 'auto' checks req.secure, which (thanks to trust proxy above) correctly
       // reflects the original client<->edge connection, not the internal
       // proxy<->app hop. DISABLE_SECURE_COOKIE is an escape hatch for hosts
@@ -56,21 +55,32 @@ app.use(
 
 app.use(loadUser);
 
-app.locals.siteName = process.env.SITE_NAME || 'Golf Tournament';
-app.locals.playerNames = function (players) {
-  return (players || []).map((p) => (p.is_captain ? '👑 ' : '') + p.name).join(' & ');
+// Composes the "Casey 2 up thru 7" / "All square thru 4" / "3&2" line for a
+// match bundle (from src/matchData.js) — shared across leaderboard/matches views.
+app.locals.matchStateText = function (b) {
+  const aName = b.sideAPlayers.map((p) => p.name.split(' ')[0]).join('/');
+  const bName = b.sideBPlayers.map((p) => p.name.split(' ')[0]).join('/');
+  const state = b.state;
+  if (state.holesPlayed === 0 && !state.isComplete) return 'Not started';
+  if (state.isComplete) {
+    if (state.closedResult === 'A/S') return 'Halved, A/S';
+    const leader = state.leadingSide === 'A' ? aName : bName;
+    return `${leader} win ${state.closedResult}`;
+  }
+  if (state.leadingSide === null) return `All square thru ${state.holesPlayed}`;
+  const leader = state.leadingSide === 'A' ? aName : bName;
+  return `${leader} ${state.diff} up thru ${state.holesPlayed}`;
 };
 
 app.use(authRoutes);
-app.use(dashboardRoutes);
-app.use(playerRoutes);
-app.use(roundRoutes);
+app.use(homeRoutes);
+app.use(leaderboardRoutes);
 app.use(matchRoutes);
 app.use(courseRoutes);
-app.use(statsRoutes);
+app.use(rulesRoutes);
+app.use(captainRoutes);
 app.use(photoRoutes);
 app.use(sidebetRoutes);
-app.use(adminRoutes);
 
 app.use((req, res) => {
   res.status(404).render('error', { message: 'Page not found.' });
@@ -86,7 +96,7 @@ const PORT = process.env.PORT || 3000;
 
 initSchema()
   .then(() => {
-    app.listen(PORT, () => console.log(`Golf tournament site running on port ${PORT}`));
+    app.listen(PORT, () => console.log(`The Aldenham Cup site running on port ${PORT}`));
   })
   .catch((err) => {
     console.error('Failed to initialize database schema:', err);

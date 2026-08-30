@@ -1,0 +1,84 @@
+<% var title = 'Captain'; var active = 'captain' %>
+<%- include('partials/header') %>
+<h1>Captain tools</h1>
+<p class="muted small">Casey and Reggel only. Edit the day's timings, fix a mis-entered score, or reset a match if something has to be corrected after the fact.</p>
+
+<div class="card">
+  <h2>Sudden death</h2>
+  <% if (suddenDeath) { %>
+    <p>🏆 <strong><%= teams[suddenDeath.winner_team].name %></strong> won sudden death (recorded by <%= suddenDeath.recorded_by %>).</p>
+    <form method="post" action="/captain/sudden-death/clear" onsubmit="return confirm('Clear the recorded sudden death result?')">
+      <button class="btn danger small" type="submit">Clear result</button>
+    </form>
+  <% } else { %>
+    <p class="small muted">Only needed if the Cup is tied 3–3 after all six matches. Casey v Reggel, Village 1st.</p>
+    <form method="post" action="/captain/sudden-death" class="flex gap mt">
+      <button class="btn small" type="submit" name="winnerTeam" value="casey">Casey wins sudden death</button>
+      <button class="btn small gold" type="submit" name="winnerTeam" value="reggel">Reggel wins sudden death</button>
+    </form>
+  <% } %>
+</div>
+
+<div class="card">
+  <h2>Today's timings</h2>
+  <% timings.forEach(function(t) { %>
+    <div class="match-row">
+      <div><strong><%= t.time %></strong> — <%= t.label %></div>
+      <form method="post" action="/captain/timings/<%= t.id %>/delete">
+        <button class="btn danger small" type="submit">Remove</button>
+      </form>
+    </div>
+  <% }) %>
+  <% if (!timings.length) { %><p class="muted small">Nothing published yet.</p><% } %>
+  <form method="post" action="/captain/timings" class="grid-2 mt">
+    <div class="field"><label>Time</label><input type="text" name="time" placeholder="7:00am" required /></div>
+    <div class="field"><label>Label</label><input type="text" name="label" placeholder="Tee off, Group 1" required /></div>
+    <button class="btn" type="submit" style="grid-column: 1 / -1;">Add</button>
+  </form>
+</div>
+
+<div class="card">
+  <h2>Reset a match</h2>
+  <p class="small muted">Clears every score entered for that match. Can't be undone.</p>
+  <% bundles.forEach(function(b) { %>
+    <form method="post" action="/captain/matches/<%= b.match.id %>/reset" class="match-row" onsubmit="return confirm('Reset match <%= b.match.id %>? This clears every hole scored so far.')">
+      <div><%= b.sideAPlayers.map(p=>p.name).join(' & ') %> v <%= b.sideBPlayers.map(p=>p.name).join(' & ') %></div>
+      <button class="btn danger small" type="submit">Reset</button>
+    </form>
+  <% }) %>
+</div>
+
+<div class="card">
+  <h2>Manual override</h2>
+  <p class="small muted">Set one player's score for one hole directly — for fixing a mistake, not for normal scoring.</p>
+  <form method="post" action="/captain/override">
+    <div class="field">
+      <label>Match</label>
+      <select name="matchId" id="ov-match">
+        <% bundles.forEach(function(b) { %>
+          <option value="<%= b.match.id %>"><%= b.match.id %> — <%= b.sideAPlayers.map(p=>p.name).join('/') %> v <%= b.sideBPlayers.map(p=>p.name).join('/') %></option>
+        <% }) %>
+      </select>
+    </div>
+    <div class="grid-2">
+      <div class="field"><label>Hole</label><input type="number" name="holeNumber" min="1" max="18" required /></div>
+      <div class="field">
+        <label>Player</label>
+        <select name="playerId">
+          <% bundles.forEach(function(b) { %>
+            <% b.allPlayers.forEach(function(p) { %>
+              <option value="<%= p.id %>" data-match="<%= b.match.id %>"><%= p.name %> (match <%= b.match.id %>)</option>
+            <% }) %>
+          <% }) %>
+        </select>
+      </div>
+    </div>
+    <div class="grid-2">
+      <div class="field"><label>Gross score</label><input type="number" name="gross" min="1" max="15" /></div>
+      <div class="field"><label><input type="checkbox" name="pickedUp" style="width:auto; display:inline-block;" /> Picked up</label></div>
+    </div>
+    <button class="btn" type="submit">Save override</button>
+  </form>
+</div>
+
+<%- include('partials/footer') %>

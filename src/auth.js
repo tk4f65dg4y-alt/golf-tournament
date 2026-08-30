@@ -1,34 +1,17 @@
-const bcrypt = require('bcryptjs');
-const { pool } = require('./db');
-
-async function hashPassword(password) {
-  return bcrypt.hash(password, 10);
-}
-
-async function comparePassword(password, hash) {
-  return bcrypt.compare(password, hash);
-}
+const { PLAYERS, SPECTATOR, TEAMS, findPlayer } = require('./data');
 
 /** Attaches req.user / res.locals.user (or null) based on the session. Runs on every request. */
-async function loadUser(req, res, next) {
-  if (!req.session || !req.session.userId) {
+function loadUser(req, res, next) {
+  const playerId = req.session && req.session.playerId;
+  const player = playerId ? findPlayer(playerId) : null;
+  if (!player) {
     req.user = null;
     res.locals.user = null;
     return next();
   }
-  try {
-    const { rows } = await pool.query(
-      `SELECT u.*, t.name AS team_name, t.color AS team_color
-       FROM users u LEFT JOIN teams t ON t.id = u.team_id
-       WHERE u.id = $1`,
-      [req.session.userId]
-    );
-    req.user = rows[0] || null;
-    res.locals.user = req.user;
-    next();
-  } catch (err) {
-    next(err);
-  }
+  req.user = { ...player, team: player.team ? TEAMS[player.team] : null };
+  res.locals.user = req.user;
+  next();
 }
 
 function requireAuth(req, res, next) {
@@ -36,10 +19,17 @@ function requireAuth(req, res, next) {
   next();
 }
 
-function requireAdmin(req, res, next) {
+/** Blocks the read-only spectator account from any write route. */
+function requirePlayer(req, res, next) {
   if (!req.user) return res.redirect('/login');
-  if (!req.user.is_admin) return res.status(403).render('error', { message: 'Admins only.' });
+  if (req.user.readOnly) return res.status(403).render('error', { message: 'Spectators can watch, not score.' });
   next();
 }
 
-module.exports = { hashPassword, comparePassword, loadUser, requireAuth, requireAdmin };
+function requireCaptain(req, res, next) {
+  if (!req.user) return res.redirect('/login');
+  if (!req.user.isCaptain) return res.status(403).render('error', { message: 'Captains only.' });
+  next();
+}
+
+module.exports = { PLAYERS, SPECTATOR, loadUser, requireAuth, requirePlayer, requireCaptain };

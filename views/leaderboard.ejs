@@ -1,0 +1,62 @@
+<% var title = 'Leaderboard'; var active = 'leaderboard' %>
+<%- include('partials/header') %>
+<meta http-equiv="refresh" content="20" />
+<h1>Leaderboard</h1>
+
+<div class="card">
+  <div class="score-hero">
+    <div class="team-score" style="color: var(--casey)">
+      <div class="num"><%= scores.confirmed.casey %></div>
+      <div class="label">Team Casey</div>
+    </div>
+    <div class="vs">vs</div>
+    <div class="team-score" style="color: var(--reggel)">
+      <div class="num"><%= scores.confirmed.reggel %></div>
+      <div class="label">Team Reggel</div>
+    </div>
+  </div>
+  <p class="projected-note muted small">Confirmed score · first to 3.5 wins</p>
+  <p class="projected-note muted small">Projected: <strong style="color:var(--casey)"><%= scores.projected.casey %></strong> – <strong style="color:var(--reggel)"><%= scores.projected.reggel %></strong></p>
+</div>
+
+<div class="card">
+  <h2>Morning · Church Course · Singles</h2>
+  <% morning.forEach(function(b) { %>
+    <a href="/matches/<%= b.match.id %>" style="text-decoration:none; color:inherit;">
+      <div class="match-row">
+        <div class="team-strip" style="background: var(--casey)"></div>
+        <div style="flex:1;">
+          <div class="match-side"><%= b.sideAPlayers.map(p=>p.name).join(' & ') %> <span class="muted">v</span> <%= b.sideBPlayers.map(p=>p.name).join(' & ') %></div>
+          <div class="small muted"><%= matchStateText(b) %></div>
+        </div>
+        <div class="match-status">
+          <% if (b.state.isComplete) { %><span class="pill complete">Final</span>
+          <% } else if (b.state.holesPlayed > 0) { %><span class="pill live">LIVE</span>
+          <% } else { %><span class="pill scheduled">Not started</span><% } %>
+        </div>
+      </div>
+    </a>
+  <% }) %>
+</div>
+
+<div class="card">
+  <h2>Afternoon · The Village · Fourball</h2>
+  <% afternoon.forEach(function(b) { %>
+    <a href="/matches/<%= b.match.id %>" style="text-decoration:none; color:inherit;">
+      <div class="match-row">
+        <div class="team-strip" style="background: var(--casey)"></div>
+        <div style="flex:1;">
+          <div class="match-side"><%= b.sideAPlayers.map(p=>p.name).join(' & ') %> <span class="muted">v</span> <%= b.sideBPlayers.map(p=>p.name).join(' & ') %></div>
+          <div class="small muted"><%= matchStateText(b) %></div>
+        </div>
+        <div class="match-status">
+          <% if (b.state.isComplete) { %><span class="pill complete">Final</span>
+          <% } else if (b.state.holesPlayed > 0) { %><span class="pill live">LIVE</span>
+          <% } else { %><span class="pill scheduled">Not started</span><% } %>
+        </div>
+      </div>
+    </a>
+  <% }) %>
+</div>
+
+<%- include('partials/footer') %>

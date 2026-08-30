@@ -2,28 +2,29 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
-  <title><%= typeof title !== 'undefined' ? title + ' · ' + siteName : siteName %></title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover" />
+  <title><%= typeof title !== 'undefined' ? title + ' · The Aldenham Cup' : 'The Aldenham Cup' %></title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:wght@600;700;900&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/css/style.css" />
 </head>
 <body>
 <% if (user) { %>
 <nav class="nav">
   <div class="nav-inner">
-    <span class="nav-brand">⛳ <%= siteName %></span>
-    <a class="link <%= typeof active !== 'undefined' && active === 'home' ? 'active' : '' %>" href="/">Leaderboard</a>
-    <a class="link <%= typeof active !== 'undefined' && active === 'rounds' ? 'active' : '' %>" href="/rounds">Rounds</a>
+    <span class="nav-brand">⛳ Aldenham Cup</span>
+    <a class="link <%= typeof active !== 'undefined' && active === 'home' ? 'active' : '' %>" href="/">Today</a>
+    <a class="link <%= typeof active !== 'undefined' && active === 'leaderboard' ? 'active' : '' %>" href="/leaderboard">Leaderboard</a>
+    <a class="link <%= typeof active !== 'undefined' && active === 'matches' ? 'active' : '' %>" href="/matches">Matches</a>
     <a class="link <%= typeof active !== 'undefined' && active === 'courses' ? 'active' : '' %>" href="/courses">Courses</a>
-    <a class="link <%= typeof active !== 'undefined' && active === 'players' ? 'active' : '' %>" href="/players">Players</a>
-    <a class="link <%= typeof active !== 'undefined' && active === 'stats' ? 'active' : '' %>" href="/stats">Stats</a>
+    <a class="link <%= typeof active !== 'undefined' && active === 'rules' ? 'active' : '' %>" href="/rules">Rules</a>
     <a class="link <%= typeof active !== 'undefined' && active === 'photos' ? 'active' : '' %>" href="/photos">Photos</a>
     <a class="link <%= typeof active !== 'undefined' && active === 'sidebets' ? 'active' : '' %>" href="/sidebets">Side Bets</a>
-    <a class="link" href="/me">Me</a>
-    <% if (user.is_admin) { %>
-      <a class="link <%= typeof active !== 'undefined' && active === 'admin' ? 'active' : '' %>" href="/admin">Admin</a>
+    <% if (user.isCaptain) { %>
+      <a class="link <%= typeof active !== 'undefined' && active === 'captain' ? 'active' : '' %>" href="/captain">Captain</a>
     <% } %>
     <span class="spacer"></span>
-    <form action="/logout" method="post"><button class="linklike" type="submit">Log out (<%= user.name.split(' ')[0] %>)</button></form>
+    <form action="/logout" method="post"><button class="linklike" type="submit"><%= user.name %><% if (user.readOnly) { %> (spectator)<% } %></button></form>
   </div>
 </nav>
 <% } %>

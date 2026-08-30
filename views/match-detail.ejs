@@ -1,136 +1,86 @@
-<% var title = 'Hole ' + (match.statusInfo.thru < 18 ? match.statusInfo.thru + 1 : 18) + ' — Match'; var active = 'rounds' %>
+<% var title = 'Match ' + b.match.id; var active = 'matches' %>
 <%- include('partials/header') %>
-<% if (!canEnter) { %><meta http-equiv="refresh" content="25" /><% } %>
-
-<p><a href="/rounds/<%= match.round_id %>">← <%= match.round_name %></a></p>
+<p><a href="/matches">← All matches</a></p>
 
 <div class="card">
-  <div class="flex between">
-    <span class="tag"><%= match.format %></span>
-    <span class="tag"><%= match.points %> pt<%= Number(match.points) !== 1 ? 's' : '' %></span>
-  </div>
+  <span class="tag"><%= b.match.format === 'singles' ? 'Singles' : 'Fourball' %></span>
+  <span class="tag"><%= b.course.name %> · <%= b.match.holeCount %> holes</span>
+  <span class="tag">Group <%= b.match.teeGroup %></span>
   <div class="score-hero mt">
-    <div class="team-score">
-      <div class="num" style="color: <%= match.side1[0] ? match.side1[0].team_color : '#1b6b3a' %>"><%= match.statusInfo.team1Wins %></div>
-      <div class="label"><%= playerNames(match.side1) || 'TBD' %></div>
+    <div class="team-score" style="color: var(--casey)">
+      <div class="num"><%= b.state.holesPlayed ? (b.state.leadingSide === 'A' ? b.state.diff : (b.state.leadingSide === 'B' ? '–' + b.state.diff : 'AS')) : '–' %></div>
+      <div class="label" style="color:var(--ink)"><%= b.sideAPlayers.map(p=>p.name).join(' & ') %></div>
     </div>
-    <div class="vs">vs</div>
-    <div class="team-score">
-      <div class="num" style="color: <%= match.side2[0] ? match.side2[0].team_color : '#c9962c' %>"><%= match.statusInfo.team2Wins %></div>
-      <div class="label"><%= playerNames(match.side2) || 'TBD' %></div>
+    <div class="vs">v</div>
+    <div class="team-score" style="color: var(--reggel)">
+      <div class="num"><%= b.state.holesPlayed ? (b.state.leadingSide === 'B' ? b.state.diff : (b.state.leadingSide === 'A' ? '–' + b.state.diff : 'AS')) : '–' %></div>
+      <div class="label" style="color:var(--ink)"><%= b.sideBPlayers.map(p=>p.name).join(' & ') %></div>
     </div>
   </div>
   <p style="text-align:center; font-weight:700; margin-top:10px;">
-    <% if (match.statusInfo.isComplete) { %><span class="pill complete"><%= match.statusInfo.closedNote %></span>
-    <% } else { %><span class="pill live"><%= match.statusInfo.thru > 0 ? 'LIVE' : 'NOT STARTED' %></span> <%= match.statusInfo.statusText %><% } %>
+    <% if (b.state.isComplete) { %><span class="pill complete">Final: <%= b.state.closedResult %></span>
+    <% } else { %><span class="pill live"><%= b.state.holesPlayed > 0 ? 'LIVE' : 'NOT STARTED' %></span> <%= matchStateText(b) %><% } %>
   </p>
-  <% if (match.notes) { %><p class="muted small" style="text-align:center;"><%= match.notes %></p><% } %>
+  <% if (canScore) { %>
+    <a class="btn block mt" href="/matches/<%= b.match.id %>/score?hole=<%= Math.min(b.state.holesPlayed + 1, b.match.holeCount) %>">
+      <%= b.state.isComplete ? 'Review scorecard' : 'Score this match →' %>
+    </a>
+  <% } %>
 </div>
 
-<% if (!canEnter) { %>
-  <div class="card"><p class="muted small mb0">👀 You're viewing this match. Only players in the match (or an admin) can enter hole results.</p></div>
-<% } %>
-
-<% var side1Color = match.side1[0] ? match.side1[0].team_color : '#1b6b3a'; var side2Color = match.side2[0] ? match.side2[0].team_color : '#c9962c'; %>
-<% var side1Label = match.side1.map(p=>p.name.split(' ')[0]).join('/') || 'Side 1'; %>
-<% var side2Label = match.side2.map(p=>p.name.split(' ')[0]).join('/') || 'Side 2'; %>
-<% var allPlayers = match.side1.concat(match.side2); %>
-
-<% if (match.hasCourse) { %>
-  <div class="card">
-    <p class="mb0 small">⛳ Auto-scored from real strokes + handicap. <%= match.isOneBall ? 'One shared score per side each hole.' : 'Each player enters their own gross score.' %></p>
-    <p class="small muted mt" style="margin-bottom:0;">
-      <% if (match.isOneBall) { %>
-        Strokes given: <%= side1Label %> <%= match.totalAllowanceBySide[1] %> · <%= side2Label %> <%= match.totalAllowanceBySide[2] %>
-      <% } else { %>
-        Strokes given: <% allPlayers.forEach(function(p, i) { %><%= i > 0 ? ' · ' : '' %><%= p.name.split(' ')[0] %> <%= match.totalAllowanceByUserId[p.id] %><% }) %>
-      <% } %>
-    </p>
-  </div>
-<% } %>
-
-<% match.holeList.forEach(function(h) { %>
-  <div class="hole-card" id="hole-<%= h.hole_number %>">
-    <div class="hole-head">
-      <span class="hole-num">Hole <%= h.hole_number %><% if (match.hasCourse) { %> <span class="muted small">· Par <%= h.par %> · SI <%= h.stroke_index %></span><% } %></span>
-      <span class="small muted">
-        <% if (h.winner === 'team1') { %><%= side1Label %> won
-        <% } else if (h.winner === 'team2') { %><%= side2Label %> won
-        <% } else if (h.winner === 'halved') { %>Halved
-        <% } %>
-      </span>
+<div class="card">
+  <h2>Shots given</h2>
+  <p class="small muted">Lowest player in the match plays off scratch. Everyone else gets the difference, hardest holes first.</p>
+  <% b.allPlayers.forEach(function(p) { %>
+    <% var holes = Object.entries(b.allocations[p.id]).filter(([,n]) => n > 0).sort((x,y)=>x[0]-y[0]); %>
+    <div class="match-row">
+      <div><%= p.isCaptain ? '👑 ' : '' %><%= p.name %></div>
+      <div class="small">
+        <% if (!holes.length) { %><span class="muted">Scratch</span>
+        <% } else { %><%= holes.map(([h,n]) => n > 1 ? `${h} (×${n})` : h).join(', ') %><% } %>
+      </div>
     </div>
+  <% }) %>
+</div>
 
-    <% if (match.hasCourse) { %>
-      <% if (canEnter) { %>
-        <form method="post" action="/matches/<%= match.id %>/hole">
-          <input type="hidden" name="hole_number" value="<%= h.hole_number %>" />
-          <% if (match.isOneBall) { %>
-            <div class="strokes-row">
-              <div class="strokes-field">
-                <label><%= side1Label %><% if (match.strokesGivenBySide[1][h.hole_number] > 0) { %> <span title="strokes given">(<%= match.strokesGivenBySide[1][h.hole_number] %>•)</span><% } %></label>
-                <input type="number" min="1" max="15" name="strokes_side1" value="<%= h.grossBySide[1] || '' %>" />
-              </div>
-              <div class="strokes-field">
-                <label><%= side2Label %><% if (match.strokesGivenBySide[2][h.hole_number] > 0) { %> <span title="strokes given">(<%= match.strokesGivenBySide[2][h.hole_number] %>•)</span><% } %></label>
-                <input type="number" min="1" max="15" name="strokes_side2" value="<%= h.grossBySide[2] || '' %>" />
-              </div>
-            </div>
-          <% } else { %>
-            <div class="strokes-row">
-              <% allPlayers.forEach(function(p) { %>
-                <div class="strokes-field">
-                  <label><%= p.name.split(' ')[0] %><% if (match.strokesGivenByUserId[p.id][h.hole_number] > 0) { %> <span title="strokes given">(<%= match.strokesGivenByUserId[p.id][h.hole_number] %>•)</span><% } %></label>
-                  <input type="number" min="1" max="15" name="strokes_<%= p.id %>" value="<%= h.grossByUserId[p.id] || '' %>" />
-                </div>
-              <% }) %>
-            </div>
-          <% } %>
-          <button class="btn small mt hole-save" type="submit">Save</button>
-        </form>
-      <% } else { %>
-        <div class="strokes-row">
-          <% if (match.isOneBall) { %>
-            <% if (h.grossBySide[1]) { %><div class="strokes-field"><label><%= side1Label %></label><span><%= h.grossBySide[1] %></span></div><% } %>
-            <% if (h.grossBySide[2]) { %><div class="strokes-field"><label><%= side2Label %></label><span><%= h.grossBySide[2] %></span></div><% } %>
-          <% } else { %>
-            <% allPlayers.forEach(function(p) { %>
-              <% if (h.grossByUserId[p.id]) { %><div class="strokes-field"><label><%= p.name.split(' ')[0] %></label><span><%= h.grossByUserId[p.id] %></span></div><% } %>
-            <% }) %>
-          <% } %>
-        </div>
-      <% } %>
-    <% } else { %>
-      <% if (canEnter) { %>
-        <form method="post" action="/matches/<%= match.id %>/hole">
-          <input type="hidden" name="hole_number" value="<%= h.hole_number %>" />
-          <div class="winner-btns">
-            <button class="winner-btn <%= h.winner === 'team1' ? 'selected team1' : '' %>" type="submit" name="winner" value="team1"
-              style="<% if (h.winner==='team1') { %>background:<%= side1Color %>;border-color:<%= side1Color %>;color:#fff;<% } %>"><%= side1Label %></button>
-            <button class="winner-btn <%= h.winner === 'halved' ? 'selected halved' : '' %>" type="submit" name="winner" value="halved">AS</button>
-            <button class="winner-btn <%= h.winner === 'team2' ? 'selected team2' : '' %>" type="submit" name="winner" value="team2"
-              style="<% if (h.winner==='team2') { %>background:<%= side2Color %>;border-color:<%= side2Color %>;color:#fff;<% } %>"><%= side2Label %></button>
-          </div>
-          <div class="strokes-row">
-            <% allPlayers.forEach(function(p) { %>
-              <div class="strokes-field">
-                <label><%= p.name.split(' ')[0] %></label>
-                <input type="number" min="1" max="15" name="strokes_<%= p.id %>" value="<%= match.strokesByHoleUser[h.hole_number + '_' + p.id] || '' %>" />
-              </div>
-            <% }) %>
-          </div>
-          <button class="btn small secondary hole-save" type="submit" name="winner" value="<%= h.winner || '' %>">Save strokes</button>
-        </form>
-      <% } else { %>
-        <div class="strokes-row">
-          <% allPlayers.forEach(function(p) { %>
-            <% var s = match.strokesByHoleUser[h.hole_number + '_' + p.id]; %>
-            <% if (s) { %><div class="strokes-field"><label><%= p.name.split(' ')[0] %></label><span><%= s %></span></div><% } %>
+<% if (b.state.holesPlayed > 0) { %>
+<div class="card">
+  <h2>Hole by hole</h2>
+  <div class="table-scroll">
+  <table>
+    <thead>
+      <tr>
+        <th>Hole</th><th>Par</th><th>SI</th>
+        <% b.allPlayers.forEach(function(p) { %><th><%= p.name.split(' ')[0] %></th><% }) %>
+        <th>Result</th>
+      </tr>
+    </thead>
+    <tbody>
+      <% b.courseHoles.forEach(function(ch) { %>
+        <% var h = ch.number; var winner = b.state.resultForHole(h); %>
+        <tr>
+          <td><%= h %></td><td><%= ch.par %></td><td><%= ch.strokeIndex %></td>
+          <% b.allPlayers.forEach(function(p) { %>
+            <% var gross = b.scores[h] ? b.scores[h][p.id] : undefined; var shots = b.allocations[p.id][h] || 0; %>
+            <td>
+              <% if (gross === undefined) { %><span class="muted">–</span>
+              <% } else if (gross === null) { %><span class="muted">PU</span>
+              <% } else { %><%= gross %><% if (shots) { %><span class="muted small"> (<%= gross - shots %>)</span><% } %><% } %>
+            </td>
           <% }) %>
-        </div>
-      <% } %>
-    <% } %>
+          <td>
+            <% if (winner === 'A') { %><span class="pill casey">Casey</span>
+            <% } else if (winner === 'B') { %><span class="pill reggel">Reggel</span>
+            <% } else if (winner === 'half') { %><span class="tag">½</span>
+            <% } else { %><span class="muted">–</span><% } %>
+          </td>
+        </tr>
+      <% }) %>
+    </tbody>
+  </table>
   </div>
-<% }) %>
+  <p class="small muted mt">Numbers in brackets are net score after shots.</p>
+</div>
+<% } %>
 
 <%- include('partials/footer') %>

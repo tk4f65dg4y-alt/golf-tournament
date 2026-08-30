@@ -1,0 +1,38 @@
+<% var title = 'Score — Match ' + b.match.id; var active = 'matches' %>
+<%- include('partials/header') %>
+<p><a href="/matches/<%= b.match.id %>">← Match <%= b.match.id %></a></p>
+
+<div id="scoring-app" data-match-id="<%= b.match.id %>" data-start-hole="<%= startHole %>">
+  <div class="hole-header" id="hole-header"></div>
+  <div class="hole-dots" id="hole-dots"></div>
+
+  <div id="player-rows"></div>
+
+  <div class="hole-result-banner" id="hole-result-banner"></div>
+
+  <div class="hole-nav">
+    <button class="btn secondary" id="prev-hole" type="button">← Prev</button>
+    <button class="btn secondary" id="next-hole" type="button">Next →</button>
+  </div>
+
+  <div class="sync-status" id="sync-status"></div>
+</div>
+
+<script id="match-data" type="application/json"><%- JSON.stringify({
+  matchId: b.match.id,
+  format: b.match.format,
+  holeCount: b.match.holeCount,
+  courseName: b.course.name,
+  courseHoles: b.courseHoles,
+  sideA: b.sideAPlayers.map(function(p){ return { id: p.id, name: p.name, isCaptain: p.isCaptain }; }),
+  sideB: b.sideBPlayers.map(function(p){ return { id: p.id, name: p.name, isCaptain: p.isCaptain }; }),
+  allocations: b.allocations,
+  scores: b.scores,
+  entryMeta: b.entryMeta,
+  points: b.match.points,
+  currentUser: { id: user.id, name: user.name, isCaptain: user.isCaptain }
+}) %></script>
+<script src="/js/golf-logic.js"></script>
+<script src="/js/scoring.js"></script>
+
+<%- include('partials/footer') %>

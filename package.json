@@ -1,17 +1,17 @@
 {
-  "name": "golf-tournament",
+  "name": "aldenham-cup",
   "version": "1.0.0",
-  "description": "Ryder Cup style golf tournament tracker for friends trips",
+  "description": "Live scoring for the Aldenham Cup — a one-day Ryder Cup style golf day",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "dev": "node server.js"
+    "dev": "node server.js",
+    "test": "node test/allocation.test.js && node test/matchstate.test.js"
   },
   "engines": {
     "node": ">=18"
   },
   "dependencies": {
-    "bcryptjs": "^2.4.3",
     "connect-pg-simple": "^9.0.1",
     "dotenv": "^16.4.5",
     "ejs": "^3.1.10",

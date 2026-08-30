@@ -2,21 +2,73 @@
 <%- include('partials/header') %>
 <div class="auth-wrap">
   <div class="auth-logo">⛳</div>
-  <div class="card">
-    <h1>Welcome back</h1>
-    <% if (error) { %><div class="error-box"><%= error %></div><% } %>
-    <form method="post" action="/login">
-      <div class="field">
-        <label>Email</label>
-        <input type="email" name="email" required value="<%= form.email || '' %>" autocomplete="email" />
+  <h1 class="auth-title">The Aldenham Cup</h1>
+
+  <% if (!selected) { %>
+    <div class="card">
+      <h2>Who's this?</h2>
+      <div class="name-grid">
+        <% players.forEach(function(p) { %>
+          <a class="name-btn team-<%= p.team %>" href="/login/<%= p.id %>"><%= p.isCaptain ? '👑 ' : '' %><%= p.name %></a>
+        <% }) %>
       </div>
-      <div class="field">
-        <label>Password</label>
-        <input type="password" name="password" required autocomplete="current-password" />
-      </div>
-      <button class="btn block" type="submit">Log in</button>
-    </form>
-    <p class="small mt">No account yet? <a href="/register">Register</a></p>
-  </div>
+      <a class="name-btn spectator mt" href="/login/<%= spectator.id %>">👀 Spectator</a>
+    </div>
+  <% } else { %>
+    <div class="card">
+      <h2><%= selected.isCaptain ? '👑 ' : '' %><%= selected.name %></h2>
+      <p class="muted small">Enter your 4-digit PIN.</p>
+      <% if (error) { %><div class="error-box"><%= error %></div><% } %>
+      <form method="post" action="/login/<%= selected.id %>" id="pin-form">
+        <input type="hidden" name="pin" id="pin-value" value="" />
+        <div class="pin-display" id="pin-display">
+          <span class="pin-dot"></span><span class="pin-dot"></span><span class="pin-dot"></span><span class="pin-dot"></span>
+        </div>
+        <div class="keypad">
+          <% ['1','2','3','4','5','6','7','8','9'].forEach(function(d) { %>
+            <button type="button" class="key" data-digit="<%= d %>"><%= d %></button>
+          <% }) %>
+          <button type="button" class="key key-ghost" data-action="clear">Clear</button>
+          <button type="button" class="key" data-digit="0">0</button>
+          <button type="button" class="key key-ghost" data-action="back">⌫</button>
+        </div>
+      </form>
+      <a class="small mt" href="/login" style="display:inline-block;">← Not <%= selected.name %>?</a>
+    </div>
+  <% } %>
 </div>
+
+<% if (selected) { %>
+<script>
+(function () {
+  var display = document.getElementById('pin-display');
+  var hidden = document.getElementById('pin-value');
+  var form = document.getElementById('pin-form');
+  var dots = display.querySelectorAll('.pin-dot');
+  var value = '';
+
+  function render() {
+    dots.forEach(function (dot, i) { dot.classList.toggle('filled', i < value.length); });
+    hidden.value = value;
+  }
+  document.querySelectorAll('.key[data-digit]').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      if (value.length >= 4) return;
+      value += btn.getAttribute('data-digit');
+      render();
+      if (value.length === 4) setTimeout(function () { form.submit(); }, 120);
+    });
+  });
+  document.querySelector('.key[data-action="back"]').addEventListener('click', function () {
+    value = value.slice(0, -1);
+    render();
+  });
+  document.querySelector('.key[data-action="clear"]').addEventListener('click', function () {
+    value = '';
+    render();
+  });
+})();
+</script>
+<% } %>
+
 <%- include('partials/footer') %>

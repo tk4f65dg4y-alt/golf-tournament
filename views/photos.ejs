@@ -2,6 +2,7 @@
 <%- include('partials/header') %>
 <h1>Photos</h1>
 
+<% if (!user.readOnly) { %>
 <div class="card">
   <h2>Add a photo</h2>
   <% if (error) { %><div class="error-box"><%= error %></div><% } %>
@@ -11,6 +12,7 @@
     <button class="btn" type="submit">Upload</button>
   </form>
 </div>
+<% } %>
 
 <div class="card">
   <% if (!photos.length) { %>
@@ -23,7 +25,7 @@
           <div class="photo-caption">
             <%= p.caption || '' %><% if (p.caption) { %><br/><% } %>
             <span class="muted"><%= p.uploader_name || 'Someone' %></span>
-            <% if (p.uploaded_by === user.id || user.is_admin) { %>
+            <% if (p.uploaded_by === user.id || user.isCaptain) { %>
               · <form method="post" action="/photos/<%= p.id %>/delete" style="display:inline" onsubmit="return confirm('Delete this photo?')">
                   <button type="submit" style="background:none;border:none;color:var(--red);cursor:pointer;padding:0;font:inherit;">delete</button>
                 </form>

@@ -1,129 +1,91 @@
--- Golf Tournament schema. Applied idempotently at boot (see src/db.js).
+-- The Aldenham Cup. Players, courses, matches, teams, and PINs are all
+-- hardcoded in src/data.js — that's the one file to edit before the day.
+-- The database only holds what actually changes during play.
 
-CREATE TABLE IF NOT EXISTS teams (
+-- Previous generic-tournament-app tables that have no equivalent in this
+-- schema at all (safe to drop unconditionally — nothing ever recreates them
+-- under these names, so after the first boot this is a permanent no-op).
+DROP TABLE IF EXISTS match_side_scores CASCADE;
+DROP TABLE IF EXISTS player_hole_scores CASCADE;
+DROP TABLE IF EXISTS match_holes CASCADE;
+DROP TABLE IF EXISTS match_players CASCADE;
+DROP TABLE IF EXISTS matches CASCADE;
+DROP TABLE IF EXISTS course_holes CASCADE;
+DROP TABLE IF EXISTS courses CASCADE;
+DROP TABLE IF EXISTS rounds CASCADE;
+DROP TABLE IF EXISTS users CASCADE;
+DROP TABLE IF EXISTS teams CASCADE;
+
+-- photos / side_bets / side_bet_participants keep the same names in the new
+-- schema too (just with text player ids instead of integer user ids), so
+-- dropping them unconditionally on every boot would wipe real event data on
+-- every restart. Only drop+recreate if the OLD (integer) column is still
+-- there; once migrated this block is a permanent no-op.
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'photos' AND column_name = 'uploaded_by' AND data_type = 'integer'
+  ) THEN
+    DROP TABLE IF EXISTS side_bet_participants CASCADE;
+    DROP TABLE IF EXISTS side_bets CASCADE;
+    DROP TABLE IF EXISTS photos CASCADE;
+  END IF;
+END $$;
+
+-- One row per player per hole per match. Absence of a row = not entered
+-- yet. picked_up = true (gross NULL) = deliberately no score for that hole.
+CREATE TABLE IF NOT EXISTS scores (
   id SERIAL PRIMARY KEY,
-  name TEXT NOT NULL,
-  color TEXT NOT NULL DEFAULT '#1b6b3a'
+  match_id INTEGER NOT NULL,
+  hole_number INTEGER NOT NULL,
+  player_id TEXT NOT NULL,
+  gross INTEGER,
+  picked_up BOOLEAN NOT NULL DEFAULT FALSE,
+  entered_by TEXT,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE (match_id, hole_number, player_id)
 );
 
-CREATE TABLE IF NOT EXISTS users (
+-- The day's schedule. Seeded empty — filled in closer to the day.
+CREATE TABLE IF NOT EXISTS timings (
   id SERIAL PRIMARY KEY,
-  name TEXT NOT NULL,
-  email TEXT NOT NULL UNIQUE,
-  password_hash TEXT NOT NULL,
-  handicap NUMERIC(4,1) NOT NULL DEFAULT 0,
-  team_id INTEGER REFERENCES teams(id) ON DELETE SET NULL,
-  is_admin BOOLEAN NOT NULL DEFAULT FALSE,
-  is_captain BOOLEAN NOT NULL DEFAULT FALSE,
-  avatar_url TEXT,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
-);
-
--- Migration for databases created before is_captain existed.
-ALTER TABLE users ADD COLUMN IF NOT EXISTS is_captain BOOLEAN NOT NULL DEFAULT FALSE;
-
-CREATE TABLE IF NOT EXISTS courses (
-  id SERIAL PRIMARY KEY,
-  name TEXT NOT NULL,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
-);
-
-CREATE TABLE IF NOT EXISTS course_holes (
-  id SERIAL PRIMARY KEY,
-  course_id INTEGER NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
-  hole_number INTEGER NOT NULL CHECK (hole_number BETWEEN 1 AND 18),
-  par INTEGER NOT NULL DEFAULT 4,
-  stroke_index INTEGER NOT NULL CHECK (stroke_index BETWEEN 1 AND 18),
-  UNIQUE (course_id, hole_number),
-  UNIQUE (course_id, stroke_index)
-);
-
-CREATE TABLE IF NOT EXISTS rounds (
-  id SERIAL PRIMARY KEY,
-  name TEXT NOT NULL,
-  course TEXT,
-  course_id INTEGER REFERENCES courses(id) ON DELETE SET NULL,
-  round_date DATE,
-  format_note TEXT,
+  time TEXT NOT NULL,
+  label TEXT NOT NULL,
   sort_order INTEGER NOT NULL DEFAULT 0
 );
 
--- Migration for databases created before course_id existed.
-ALTER TABLE rounds ADD COLUMN IF NOT EXISTS course_id INTEGER REFERENCES courses(id) ON DELETE SET NULL;
-
-CREATE TABLE IF NOT EXISTS matches (
+-- Sudden death only happens if the Cup is tied 3-3 after all six matches.
+CREATE TABLE IF NOT EXISTS sudden_death (
   id SERIAL PRIMARY KEY,
-  round_id INTEGER NOT NULL REFERENCES rounds(id) ON DELETE CASCADE,
-  format TEXT NOT NULL DEFAULT 'singles', -- singles | fourball | foursomes | scramble
-  points NUMERIC(3,1) NOT NULL DEFAULT 1,
-  status TEXT NOT NULL DEFAULT 'scheduled', -- scheduled | in_progress | complete
-  team1_result NUMERIC(3,1),
-  team2_result NUMERIC(3,1),
-  closed_note TEXT, -- e.g. "3&2"
-  notes TEXT,
-  sort_order INTEGER NOT NULL DEFAULT 0,
+  winner_team TEXT, -- 'casey' | 'reggel'
+  recorded_by TEXT,
+  recorded_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+-- Photos and side bets, carried over from the earlier build (adapted to
+-- text player ids instead of a users table).
+CREATE TABLE IF NOT EXISTS photos (
+  id SERIAL PRIMARY KEY,
+  uploaded_by TEXT,
+  filename TEXT NOT NULL,
+  caption TEXT,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
-);
-
-CREATE TABLE IF NOT EXISTS match_players (
-  id SERIAL PRIMARY KEY,
-  match_id INTEGER NOT NULL REFERENCES matches(id) ON DELETE CASCADE,
-  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  side INTEGER NOT NULL, -- 1 or 2
-  UNIQUE (match_id, user_id)
-);
-
-CREATE TABLE IF NOT EXISTS match_holes (
-  id SERIAL PRIMARY KEY,
-  match_id INTEGER NOT NULL REFERENCES matches(id) ON DELETE CASCADE,
-  hole_number INTEGER NOT NULL CHECK (hole_number BETWEEN 1 AND 18),
-  winner TEXT, -- 'team1' | 'team2' | 'halved' | NULL (not played)
-  entered_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-  UNIQUE (match_id, hole_number)
-);
-
-CREATE TABLE IF NOT EXISTS player_hole_scores (
-  id SERIAL PRIMARY KEY,
-  match_id INTEGER NOT NULL REFERENCES matches(id) ON DELETE CASCADE,
-  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  hole_number INTEGER NOT NULL CHECK (hole_number BETWEEN 1 AND 18),
-  strokes INTEGER,
-  UNIQUE (match_id, user_id, hole_number)
-);
-
--- One shared gross score per side per hole, for one-ball formats
--- (foursomes/scramble) where individual players don't have separate scores.
-CREATE TABLE IF NOT EXISTS match_side_scores (
-  id SERIAL PRIMARY KEY,
-  match_id INTEGER NOT NULL REFERENCES matches(id) ON DELETE CASCADE,
-  side INTEGER NOT NULL, -- 1 or 2
-  hole_number INTEGER NOT NULL CHECK (hole_number BETWEEN 1 AND 18),
-  strokes INTEGER,
-  UNIQUE (match_id, side, hole_number)
 );
 
 CREATE TABLE IF NOT EXISTS side_bets (
   id SERIAL PRIMARY KEY,
   description TEXT NOT NULL,
   wager TEXT,
-  created_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  created_by TEXT,
   status TEXT NOT NULL DEFAULT 'open', -- open | settled
-  winner_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  winner_player_id TEXT,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
 CREATE TABLE IF NOT EXISTS side_bet_participants (
   id SERIAL PRIMARY KEY,
   side_bet_id INTEGER NOT NULL REFERENCES side_bets(id) ON DELETE CASCADE,
-  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  UNIQUE (side_bet_id, user_id)
-);
-
-CREATE TABLE IF NOT EXISTS photos (
-  id SERIAL PRIMARY KEY,
-  uploaded_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
-  filename TEXT NOT NULL,
-  caption TEXT,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+  player_id TEXT NOT NULL,
+  UNIQUE (side_bet_id, player_id)
 );
