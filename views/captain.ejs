@@ -3,6 +3,32 @@
 <h1>Captain tools</h1>
 <p class="muted small">Casey and Reggel only. Edit the day's timings, fix a mis-entered score, or reset a match if something has to be corrected after the fact.</p>
 
+<% if (conflicts.length) { %>
+<div class="card" style="border: 2px solid var(--red);">
+  <h2>⚠ Score conflicts (<%= conflicts.length %>)</h2>
+  <p class="small muted">Two different people entered two different scores for these holes — that's held out of the match result until it's settled. Pick which is right, or clear it back to unentered.</p>
+  <% conflicts.forEach(function(c) { %>
+    <div class="match-row" style="flex-direction:column; align-items:stretch;">
+      <div><strong>Match <%= c.matchId %>, Hole <%= c.holeNumber %></strong> — <%= c.player ? (c.player.isCaptain ? '👑 ' : '') + c.player.name : c.player %></div>
+      <div class="flex gap wrap mt">
+        <form method="post" action="/captain/conflicts/<%= c.matchId %>/<%= c.holeNumber %>/<%= c.player.id %>/resolve">
+          <input type="hidden" name="use" value="existing" />
+          <button class="btn small" type="submit"><%= c.enteredBy %> said <%= c.gross %></button>
+        </form>
+        <form method="post" action="/captain/conflicts/<%= c.matchId %>/<%= c.holeNumber %>/<%= c.player.id %>/resolve">
+          <input type="hidden" name="use" value="conflict" />
+          <button class="btn small gold" type="submit"><%= c.conflictEnteredBy %> said <%= c.conflictGross %></button>
+        </form>
+        <form method="post" action="/captain/conflicts/<%= c.matchId %>/<%= c.holeNumber %>/<%= c.player.id %>/resolve">
+          <input type="hidden" name="use" value="clear" />
+          <button class="btn danger small" type="submit">Neither — clear it</button>
+        </form>
+      </div>
+    </div>
+  <% }) %>
+</div>
+<% } %>
+
 <div class="card">
   <h2>Sudden death</h2>
   <% if (suddenDeath) { %>

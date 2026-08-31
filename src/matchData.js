@@ -2,15 +2,46 @@ const { pool } = require('./db');
 const { COURSES, MATCHES, findPlayer, findMatch, shotsFor } = require('./data');
 const { matchAllocations, computeMatchState } = require('../public/js/golf-logic');
 
-/** Load raw score rows for a match as { holeNumber: { playerId: gross|null } } (undefined = not entered). */
+/**
+ * Load raw score rows for a match as { holeNumber: { playerId: gross|null } }
+ * (undefined = not entered). A hole with an unresolved conflict (two
+ * different people entered two different numbers) counts as not entered
+ * here too -- it stays out of the match result until a captain resolves it,
+ * same as a genuinely-unscored hole.
+ */
 async function loadScores(matchId) {
-  const { rows } = await pool.query('SELECT hole_number, player_id, gross, picked_up FROM scores WHERE match_id = $1', [matchId]);
+  const { rows } = await pool.query('SELECT hole_number, player_id, gross, picked_up, conflict_gross FROM scores WHERE match_id = $1', [matchId]);
   const scores = {};
   for (const r of rows) {
     scores[r.hole_number] = scores[r.hole_number] || {};
-    scores[r.hole_number][r.player_id] = r.picked_up ? null : r.gross;
+    scores[r.hole_number][r.player_id] = r.picked_up ? null : (r.conflict_gross !== null ? undefined : r.gross);
   }
   return scores;
+}
+
+/** Load any unresolved score conflicts for a match as { holeNumber: { playerId: { gross, enteredBy, conflictGross, conflictEnteredBy } } }. */
+async function loadConflicts(matchId) {
+  const { rows } = await pool.query(
+    `SELECT hole_number, player_id, gross, entered_by, conflict_gross, conflict_entered_by
+     FROM scores WHERE match_id = $1 AND conflict_gross IS NOT NULL`,
+    [matchId]
+  );
+  const conflicts = {};
+  for (const r of rows) {
+    conflicts[r.hole_number] = conflicts[r.hole_number] || {};
+    conflicts[r.hole_number][r.player_id] = {
+      gross: r.gross,
+      enteredBy: r.entered_by,
+      conflictGross: r.conflict_gross,
+      conflictEnteredBy: r.conflict_entered_by
+    };
+  }
+  return conflicts;
+}
+
+async function loadResetAt(matchId) {
+  const { rows } = await pool.query('SELECT reset_at FROM match_resets WHERE match_id = $1', [matchId]);
+  return rows[0] ? rows[0].reset_at : null;
 }
 
 /** Load the optional performance stats for a match as { holeNumber: { playerId: { putts, fairwayHit, gir } } }. */
@@ -51,9 +82,11 @@ async function buildMatchBundle(matchId) {
   const scores = await loadScores(matchId);
   const entryMeta = await loadEntryMeta(matchId);
   const stats = await loadStats(matchId);
+  const conflicts = await loadConflicts(matchId);
+  const resetAt = await loadResetAt(matchId);
   const state = computeMatchState(match, courseHoles, allocations, scores);
 
-  return { match, course, courseHoles, sideAPlayers, sideBPlayers, allPlayers, allocations, scores, entryMeta, stats, state };
+  return { match, course, courseHoles, sideAPlayers, sideBPlayers, allPlayers, allocations, scores, entryMeta, stats, conflicts, resetAt, state };
 }
 
 async function buildAllMatchBundles() {

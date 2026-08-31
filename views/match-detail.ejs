@@ -2,6 +2,13 @@
 <%- include('partials/header') %>
 <p><a href="/matches">← All matches</a></p>
 
+<% var conflictHoles = Object.keys(b.conflicts); %>
+<% if (conflictHoles.length) { %>
+<div class="card" style="border: 2px solid var(--red);">
+  <p class="mb0" style="font-weight:700;">⚠ <%= conflictHoles.length %> hole<%= conflictHoles.length === 1 ? '' : 's' %> here have conflicting scores from two different people — held out of the result until a captain resolves it.</p>
+</div>
+<% } %>
+
 <div class="card">
   <span class="tag"><%= b.match.format === 'singles' ? 'Singles' : 'Fourball' %></span>
   <span class="tag"><%= b.course.name %> · <%= b.match.holeCount %> holes</span>
@@ -62,8 +69,10 @@
           <td><%= h %></td><td><%= ch.par %></td><td><%= ch.strokeIndex %></td>
           <% b.allPlayers.forEach(function(p) { %>
             <% var gross = b.scores[h] ? b.scores[h][p.id] : undefined; var shots = b.allocations[p.id][h] || 0; %>
+            <% var conflict = b.conflicts[h] && b.conflicts[h][p.id]; %>
             <td>
-              <% if (gross === undefined) { %><span class="muted">–</span>
+              <% if (conflict) { %><span class="bad" style="font-weight:800;" title="Conflict: <%= conflict.gross %> vs <%= conflict.conflictGross %>">⚠</span>
+              <% } else if (gross === undefined) { %><span class="muted">–</span>
               <% } else if (gross === null) { %><span class="muted">PU</span>
               <% } else { %><%= gross %><% if (shots) { %><span class="muted small"> (<%= gross - shots %>)</span><% } %><% } %>
             </td>

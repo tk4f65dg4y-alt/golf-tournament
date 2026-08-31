@@ -40,6 +40,14 @@ END $$;
 -- putts/fairway_hit/gir are optional performance stats captured alongside
 -- the score -- all nullable, since only gross is required to actually
 -- settle a hole.
+--
+-- conflict_gross etc.: since anyone in a match can enter anyone's score
+-- (handy when only one player has signal), two different people can enter
+-- two different numbers for the same hole. Rather than silently letting
+-- the second submission overwrite the first, that second value lands in
+-- conflict_gross instead -- the hole stays flagged and out of the match
+-- result until a captain resolves it (src/matchData.js treats a conflicted
+-- hole as not-yet-entered for scoring purposes).
 CREATE TABLE IF NOT EXISTS scores (
   id SERIAL PRIMARY KEY,
   match_id INTEGER NOT NULL,
@@ -51,16 +59,34 @@ CREATE TABLE IF NOT EXISTS scores (
   fairway_hit BOOLEAN, -- NULL = not applicable (e.g. a par 3) or not recorded
   gir BOOLEAN, -- green in regulation
   entered_by TEXT,
+  conflict_gross INTEGER,
+  conflict_entered_by TEXT,
+  conflict_at TIMESTAMPTZ,
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   UNIQUE (match_id, hole_number, player_id)
 );
 
--- scores existed before putts/fairway_hit/gir were added -- backfill the
--- columns onto any table that's missing them so existing deployments don't
--- need a manual migration.
+-- scores existed before putts/fairway_hit/gir/conflict_* were added --
+-- backfill the columns onto any table that's missing them so existing
+-- deployments don't need a manual migration.
 ALTER TABLE scores ADD COLUMN IF NOT EXISTS putts INTEGER;
 ALTER TABLE scores ADD COLUMN IF NOT EXISTS fairway_hit BOOLEAN;
 ALTER TABLE scores ADD COLUMN IF NOT EXISTS gir BOOLEAN;
+ALTER TABLE scores ADD COLUMN IF NOT EXISTS conflict_gross INTEGER;
+ALTER TABLE scores ADD COLUMN IF NOT EXISTS conflict_entered_by TEXT;
+ALTER TABLE scores ADD COLUMN IF NOT EXISTS conflict_at TIMESTAMPTZ;
+
+-- Bumped every time a captain resets a match's scores. The offline-first
+-- scoring screen caches everything in localStorage for resilience against
+-- patchy signal, so a server-side wipe needs an explicit signal like this
+-- one -- otherwise a phone that already had the page open just keeps
+-- showing (and re-syncing) the old scores forever, since there's nothing
+-- in a "the server now has fewer rows" response to say "those were deleted
+-- on purpose", as opposed to "nobody's gotten to them yet".
+CREATE TABLE IF NOT EXISTS match_resets (
+  match_id INTEGER PRIMARY KEY,
+  reset_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
 
 -- The day's schedule. Seeded empty — filled in closer to the day.
 CREATE TABLE IF NOT EXISTS timings (

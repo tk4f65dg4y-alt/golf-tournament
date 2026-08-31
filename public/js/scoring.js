@@ -9,7 +9,9 @@
   const LS_SCORES = `aldenham_scores_${matchId}`;
   const LS_META = `aldenham_meta_${matchId}`;
   const LS_STATS = `aldenham_stats_${matchId}`;
+  const LS_CONFLICTS = `aldenham_conflicts_${matchId}`;
   const LS_PENDING = `aldenham_pending_${matchId}`;
+  const LS_RESET_AT = `aldenham_resetAt_${matchId}`;
 
   function loadJSON(key, fallback) {
     try {
@@ -28,14 +30,38 @@
   let meta = loadJSON(LS_META, null) || JSON.parse(JSON.stringify(raw.entryMeta || {}));
   // stats: { [holeNumber]: { [playerId]: { putts, fairwayHit, gir } } } — optional, independent of gross.
   let stats = loadJSON(LS_STATS, null) || JSON.parse(JSON.stringify(raw.stats || {}));
+  // conflicts: { [holeNumber]: { [playerId]: { gross, enteredBy, conflictGross, conflictEnteredBy } } }
+  let conflicts = loadJSON(LS_CONFLICTS, null) || JSON.parse(JSON.stringify(raw.conflicts || {}));
   let pending = loadJSON(LS_PENDING, []); // [{holeNumber, playerId, gross, pickedUp, putts, fairwayHit, gir, ts}]
 
   function persist() {
     saveJSON(LS_SCORES, scores);
     saveJSON(LS_META, meta);
     saveJSON(LS_STATS, stats);
+    saveJSON(LS_CONFLICTS, conflicts);
     saveJSON(LS_PENDING, pending);
   }
+
+  // A captain reset clears the server's copy of this match outright -- but
+  // a phone that already has this page open (or cached it earlier) has no
+  // way to tell "deleted on purpose" apart from "nobody's scored it yet"
+  // from the score data alone, since both just look like an empty match.
+  // match_resets.reset_at is the explicit signal: if the server's is newer
+  // than the last one we saw, wipe every bit of local state for this match
+  // before doing anything else.
+  function applyResetIfNeeded(serverResetAt) {
+    if (!serverResetAt) return;
+    const localResetAt = loadJSON(LS_RESET_AT, null);
+    if (localResetAt && new Date(localResetAt).getTime() >= new Date(serverResetAt).getTime()) return;
+    scores = {};
+    meta = {};
+    stats = {};
+    conflicts = {};
+    pending = [];
+    saveJSON(LS_RESET_AT, serverResetAt);
+    persist();
+  }
+  applyResetIfNeeded(raw.resetAt);
 
   const players = raw.sideA.concat(raw.sideB);
   const allPlayerIds = players.map((p) => p.id);
@@ -43,6 +69,18 @@
 
   function currentStat(holeNumber, playerId) {
     return (stats[holeNumber] && stats[holeNumber][playerId]) || {};
+  }
+
+  function currentConflict(holeNumber, playerId) {
+    return (conflicts[holeNumber] && conflicts[holeNumber][playerId]) || null;
+  }
+
+  // A raw player id shows as their name; a captain-override's "Name
+  // (override)" string (from the server) already reads fine as-is.
+  function nameForEnteredBy(v) {
+    if (!v) return '';
+    const p = players.find((x) => x.id === v);
+    return p ? p.name : v;
   }
 
   // Every sync always carries the full known row for that hole/player (gross
@@ -111,10 +149,29 @@
           body: JSON.stringify(entry)
         });
         if (!res.ok) throw new Error('sync failed');
+        const body = await res.json().catch(() => ({}));
         const key = `${entry.holeNumber}:${entry.playerId}`;
         pending = pending.filter((e) => `${e.holeNumber}:${e.playerId}` !== key || e.ts !== entry.ts);
         if (meta[entry.holeNumber] && meta[entry.holeNumber][entry.playerId]) {
           meta[entry.holeNumber][entry.playerId].pending = false;
+        }
+        if (body.conflict) {
+          // Someone else already had a different number in for this hole --
+          // the server kept theirs standing rather than take ours. Flag it
+          // and fall back to showing what's actually authoritative instead
+          // of our own optimistic (and now overruled) guess.
+          conflicts[entry.holeNumber] = conflicts[entry.holeNumber] || {};
+          conflicts[entry.holeNumber][entry.playerId] = {
+            gross: body.existingGross,
+            enteredBy: body.existingEnteredBy,
+            conflictGross: entry.gross,
+            conflictEnteredBy: raw.currentUser.id
+          };
+          scores[entry.holeNumber] = scores[entry.holeNumber] || {};
+          scores[entry.holeNumber][entry.playerId] = body.existingGross;
+        } else if (conflicts[entry.holeNumber]) {
+          // A clean, agreeing write resolves any conflict that was there.
+          delete conflicts[entry.holeNumber][entry.playerId];
         }
       } catch (e) {
         // stays queued — network's still down or flaky, we'll retry.
@@ -132,6 +189,7 @@
       const res = await fetch(`/api/matches/${matchId}/scores`);
       if (!res.ok) return;
       const data = await res.json();
+      applyResetIfNeeded(data.resetAt);
       const pendingKeys = new Set(pending.map((e) => `${e.holeNumber}:${e.playerId}`));
       for (const h of Object.keys(data.scores || {})) {
         for (const pid of Object.keys(data.scores[h])) {
@@ -148,6 +206,10 @@
           }
         }
       }
+      // Conflicts (and their resolutions) always come straight from the
+      // server -- a captain resolving one on their own device is exactly
+      // the case this needs to pick up on the next poll.
+      conflicts = JSON.parse(JSON.stringify(data.conflicts || {}));
       persist();
       renderHole();
     } catch (e) {
@@ -215,6 +277,7 @@
       const net = gross !== undefined && gross !== null ? gross - shots : null;
       const m = meta[currentHole] && meta[currentHole][p.id];
       const s = currentStat(currentHole, p.id);
+      const c = currentConflict(currentHole, p.id);
       // Stats only make sense once there's an actual score for the hole.
       const showStats = !pickedUp && gross !== undefined;
 
@@ -246,6 +309,9 @@
           ` : ''}
           <button type="button" class="stat-chip ${s.gir === true ? 'hit' : s.gir === false ? 'miss' : ''}" data-stat-toggle="gir" data-player="${p.id}">GIR ${s.gir === true ? '✓' : s.gir === false ? '✗' : ''}</button>
         </div>
+        ` : ''}
+        ${c ? `
+        <div class="conflict-banner">⚠ ${nameForEnteredBy(c.enteredBy)} said ${c.gross}, ${nameForEnteredBy(c.conflictEnteredBy)} said ${c.conflictGross} — showing ${c.gross} for now. Ask a captain to sort it out.</div>
         ` : ''}
         ${m ? `<div class="small muted mt" style="margin-top:6px;">${m.pending ? '⏳ ' : '✓ '}${m.enteredBy || ''}${m.updatedAt ? ' · ' + timeAgo(m.updatedAt) : ''}</div>` : ''}
       `;

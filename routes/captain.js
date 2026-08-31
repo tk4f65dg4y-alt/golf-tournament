@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { pool } = require('../src/db');
 const { requireCaptain, requireCasey } = require('../src/auth');
-const { MATCHES, TEAMS, findMatch } = require('../src/data');
+const { MATCHES, TEAMS, findMatch, findPlayer } = require('../src/data');
 const { buildAllMatchBundles } = require('../src/matchData');
 
 router.get('/captain', requireCaptain, async (req, res, next) => {
@@ -11,7 +11,65 @@ router.get('/captain', requireCaptain, async (req, res, next) => {
     const { rows: suddenDeathRows } = await pool.query('SELECT * FROM sudden_death ORDER BY id DESC LIMIT 1');
     const { rows: rules } = await pool.query('SELECT * FROM rules ORDER BY sort_order, id');
     const bundles = await buildAllMatchBundles();
-    res.render('captain', { timings, suddenDeath: suddenDeathRows[0] || null, bundles, teams: TEAMS, rules });
+
+    // Flatten every match's unresolved conflicts into one list for a single
+    // "sort these out" card, rather than making a captain hunt hole by hole.
+    // entered_by is a raw player id for a normal entry, or a "Name
+    // (override)" string for a past captain override -- findPlayer just
+    // returns null for the latter, so it falls through to showing the
+    // string as-is, which is already readable.
+    const nameFor = (enteredBy) => (findPlayer(enteredBy) || {}).name || enteredBy;
+    const conflicts = [];
+    for (const b of bundles) {
+      for (const [holeNumber, byPlayer] of Object.entries(b.conflicts)) {
+        for (const [playerId, c] of Object.entries(byPlayer)) {
+          conflicts.push({
+            matchId: b.match.id,
+            holeNumber: Number(holeNumber),
+            player: b.allPlayers.find((p) => p.id === playerId),
+            gross: c.gross,
+            enteredBy: nameFor(c.enteredBy),
+            conflictGross: c.conflictGross,
+            conflictEnteredBy: nameFor(c.conflictEnteredBy)
+          });
+        }
+      }
+    }
+
+    res.render('captain', { timings, suddenDeath: suddenDeathRows[0] || null, bundles, teams: TEAMS, rules, conflicts });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// A captain picks which of the two disputed values is right (or neither,
+// clearing it back to unentered) -- exactly the "captains settle it on the
+// spot" rule, just digital. Shared with both captains, same as the rest of
+// dispute resolution.
+router.post('/captain/conflicts/:matchId/:hole/:playerId/resolve', requireCaptain, async (req, res, next) => {
+  try {
+    const match = findMatch(req.params.matchId);
+    if (!match) return res.redirect('/captain');
+    const h = Number(req.params.hole);
+    const playerId = req.params.playerId;
+    const use = req.body.use; // 'existing' | 'conflict' | 'clear'
+
+    if (use === 'clear') {
+      await pool.query('DELETE FROM scores WHERE match_id = $1 AND hole_number = $2 AND player_id = $3', [match.id, h, playerId]);
+    } else if (use === 'conflict') {
+      await pool.query(
+        `UPDATE scores SET gross = conflict_gross, entered_by = conflict_entered_by, conflict_gross = NULL, conflict_entered_by = NULL, conflict_at = NULL, updated_at = now()
+         WHERE match_id = $1 AND hole_number = $2 AND player_id = $3`,
+        [match.id, h, playerId]
+      );
+    } else {
+      await pool.query(
+        `UPDATE scores SET conflict_gross = NULL, conflict_entered_by = NULL, conflict_at = NULL, updated_at = now()
+         WHERE match_id = $1 AND hole_number = $2 AND player_id = $3`,
+        [match.id, h, playerId]
+      );
+    }
+    res.redirect('/captain');
   } catch (err) {
     next(err);
   }
@@ -92,11 +150,20 @@ router.post('/captain/timings/:id/delete', requireCaptain, async (req, res, next
 });
 
 // Resetting scores (one match, or everything) is Casey-only -- not shared
-// with Reggel like the rest of the captain tools.
+// with Reggel like the rest of the captain tools. Bumping match_resets is
+// what tells any phone with the scoring screen already open (and its own
+// offline localStorage cache) that this match's old scores are actually
+// gone, not just "not synced yet" -- see public/js/scoring.js.
 router.post('/captain/matches/:id/reset', requireCasey, async (req, res, next) => {
   try {
-    if (!findMatch(req.params.id)) return res.redirect('/captain');
-    await pool.query('DELETE FROM scores WHERE match_id = $1', [req.params.id]);
+    const match = findMatch(req.params.id);
+    if (!match) return res.redirect('/captain');
+    await pool.query('DELETE FROM scores WHERE match_id = $1', [match.id]);
+    await pool.query(
+      `INSERT INTO match_resets (match_id, reset_at) VALUES ($1, now())
+       ON CONFLICT (match_id) DO UPDATE SET reset_at = now()`,
+      [match.id]
+    );
     res.redirect('/captain');
   } catch (err) {
     next(err);
@@ -106,6 +173,13 @@ router.post('/captain/matches/:id/reset', requireCasey, async (req, res, next) =
 router.post('/captain/reset-all', requireCasey, async (req, res, next) => {
   try {
     await pool.query('DELETE FROM scores');
+    for (const m of MATCHES) {
+      await pool.query(
+        `INSERT INTO match_resets (match_id, reset_at) VALUES ($1, now())
+         ON CONFLICT (match_id) DO UPDATE SET reset_at = now()`,
+        [m.id]
+      );
+    }
     res.redirect('/captain');
   } catch (err) {
     next(err);
@@ -123,9 +197,9 @@ router.post('/captain/override', requireCaptain, async (req, res, next) => {
 
     if (pickedUp === 'on') {
       await pool.query(
-        `INSERT INTO scores (match_id, hole_number, player_id, gross, picked_up, entered_by, updated_at)
-         VALUES ($1, $2, $3, NULL, TRUE, $4, now())
-         ON CONFLICT (match_id, hole_number, player_id) DO UPDATE SET gross = NULL, picked_up = TRUE, entered_by = $4, updated_at = now()`,
+        `INSERT INTO scores (match_id, hole_number, player_id, gross, picked_up, entered_by, conflict_gross, conflict_entered_by, conflict_at, updated_at)
+         VALUES ($1, $2, $3, NULL, TRUE, $4, NULL, NULL, NULL, now())
+         ON CONFLICT (match_id, hole_number, player_id) DO UPDATE SET gross = NULL, picked_up = TRUE, entered_by = $4, conflict_gross = NULL, conflict_entered_by = NULL, conflict_at = NULL, updated_at = now()`,
         [matchId, h, playerId, `${req.user.name} (override)`]
       );
     } else if (!gross) {
@@ -133,10 +207,12 @@ router.post('/captain/override', requireCaptain, async (req, res, next) => {
     } else {
       const g = Number(gross);
       if (Number.isFinite(g) && g >= 1 && g <= 15) {
+        // A captain override is itself a valid way to resolve a conflict --
+        // it always wins outright, per the Disputes rule.
         await pool.query(
-          `INSERT INTO scores (match_id, hole_number, player_id, gross, picked_up, entered_by, updated_at)
-           VALUES ($1, $2, $3, $4, FALSE, $5, now())
-           ON CONFLICT (match_id, hole_number, player_id) DO UPDATE SET gross = $4, picked_up = FALSE, entered_by = $5, updated_at = now()`,
+          `INSERT INTO scores (match_id, hole_number, player_id, gross, picked_up, entered_by, conflict_gross, conflict_entered_by, conflict_at, updated_at)
+           VALUES ($1, $2, $3, $4, FALSE, $5, NULL, NULL, NULL, now())
+           ON CONFLICT (match_id, hole_number, player_id) DO UPDATE SET gross = $4, picked_up = FALSE, entered_by = $5, conflict_gross = NULL, conflict_entered_by = NULL, conflict_at = NULL, updated_at = now()`,
           [matchId, h, playerId, g, `${req.user.name} (override)`]
         );
       }

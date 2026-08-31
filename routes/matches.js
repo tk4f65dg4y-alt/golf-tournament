@@ -48,7 +48,7 @@ router.get('/api/matches/:id/scores', requirePlayer, async (req, res, next) => {
   try {
     const bundle = await buildMatchBundle(req.params.id);
     if (!bundle) return res.status(404).json({ error: 'not found' });
-    res.json({ scores: bundle.scores, entryMeta: bundle.entryMeta, stats: bundle.stats });
+    res.json({ scores: bundle.scores, entryMeta: bundle.entryMeta, stats: bundle.stats, conflicts: bundle.conflicts, resetAt: bundle.resetAt });
   } catch (err) {
     next(err);
   }
@@ -80,11 +80,12 @@ router.post('/api/matches/:id/scores', requirePlayer, async (req, res, next) => 
     const g2 = typeof gir === 'boolean' ? gir : null;
 
     if (pickedUp) {
-      // No score for the hole means no stats for it either.
+      // No score for the hole means no stats for it either -- and clears
+      // any stale conflict from before it was picked up.
       await pool.query(
-        `INSERT INTO scores (match_id, hole_number, player_id, gross, picked_up, putts, fairway_hit, gir, entered_by, updated_at)
-         VALUES ($1, $2, $3, NULL, TRUE, NULL, NULL, NULL, $4, now())
-         ON CONFLICT (match_id, hole_number, player_id) DO UPDATE SET gross = NULL, picked_up = TRUE, putts = NULL, fairway_hit = NULL, gir = NULL, entered_by = $4, updated_at = now()`,
+        `INSERT INTO scores (match_id, hole_number, player_id, gross, picked_up, putts, fairway_hit, gir, entered_by, conflict_gross, conflict_entered_by, conflict_at, updated_at)
+         VALUES ($1, $2, $3, NULL, TRUE, NULL, NULL, NULL, $4, NULL, NULL, NULL, now())
+         ON CONFLICT (match_id, hole_number, player_id) DO UPDATE SET gross = NULL, picked_up = TRUE, putts = NULL, fairway_hit = NULL, gir = NULL, entered_by = $4, conflict_gross = NULL, conflict_entered_by = NULL, conflict_at = NULL, updated_at = now()`,
         [matchId, h, playerId, req.user.id]
       );
     } else if (gross === null || gross === undefined) {
@@ -92,10 +93,32 @@ router.post('/api/matches/:id/scores', requirePlayer, async (req, res, next) => 
     } else {
       const g = Number(gross);
       if (!Number.isFinite(g) || g < 1 || g > 15) return res.status(400).json({ error: 'bad gross' });
+
+      // Anyone in the match can enter anyone's score, so two different
+      // people can genuinely disagree on what a hole was. If someone other
+      // than whoever entered the existing value now submits a *different*
+      // one, don't silently overwrite it -- park it as a conflict instead
+      // and leave the original standing until a captain resolves it.
+      const { rows: existingRows } = await pool.query(
+        'SELECT gross, entered_by, picked_up FROM scores WHERE match_id = $1 AND hole_number = $2 AND player_id = $3',
+        [matchId, h, playerId]
+      );
+      const existing = existingRows[0];
+      const isConflict = existing && !existing.picked_up && existing.gross !== null && existing.entered_by && existing.entered_by !== req.user.id && existing.gross !== g;
+
+      if (isConflict) {
+        await pool.query(
+          `UPDATE scores SET putts = $1, fairway_hit = $2, gir = $3, conflict_gross = $4, conflict_entered_by = $5, conflict_at = now()
+           WHERE match_id = $6 AND hole_number = $7 AND player_id = $8`,
+          [p, fh, g2, g, req.user.id, matchId, h, playerId]
+        );
+        return res.json({ ok: true, conflict: true, existingGross: existing.gross, existingEnteredBy: existing.entered_by, updatedAt: new Date().toISOString() });
+      }
+
       await pool.query(
-        `INSERT INTO scores (match_id, hole_number, player_id, gross, picked_up, putts, fairway_hit, gir, entered_by, updated_at)
-         VALUES ($1, $2, $3, $4, FALSE, $5, $6, $7, $8, now())
-         ON CONFLICT (match_id, hole_number, player_id) DO UPDATE SET gross = $4, picked_up = FALSE, putts = $5, fairway_hit = $6, gir = $7, entered_by = $8, updated_at = now()`,
+        `INSERT INTO scores (match_id, hole_number, player_id, gross, picked_up, putts, fairway_hit, gir, entered_by, conflict_gross, conflict_entered_by, conflict_at, updated_at)
+         VALUES ($1, $2, $3, $4, FALSE, $5, $6, $7, $8, NULL, NULL, NULL, now())
+         ON CONFLICT (match_id, hole_number, player_id) DO UPDATE SET gross = $4, picked_up = FALSE, putts = $5, fairway_hit = $6, gir = $7, entered_by = $8, conflict_gross = NULL, conflict_entered_by = NULL, conflict_at = NULL, updated_at = now()`,
         [matchId, h, playerId, g, p, fh, g2, req.user.id]
       );
     }
