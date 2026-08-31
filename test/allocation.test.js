@@ -1,4 +1,8 @@
-// Validates src/allocation.js against every fixture in the spec (section 4).
+// Validates the shot allocation rule: every player plays off their own raw
+// course handicap in every match, fixed relative to Casey (0, scratch) --
+// never re-based to whoever's lowest in a given pairing. Only Casey ever
+// plays scratch; everyone else brings their real handicap into every match,
+// including matches Casey isn't even in.
 // Run: node test/allocation.test.js
 const assert = require('assert');
 const { COURSES, PLAYERS, MATCHES, shotsFor, findPlayer } = require('../src/data');
@@ -38,16 +42,17 @@ check('Match 1 — Casey receives', holesWithShots(alloc.casey), []);
 check('Match 1 — Reggel receives', holesWithShots(alloc.reggel), [4, 10, 13]);
 
 alloc = singlesAllocations(2, 'church');
-check('Match 2 — Milo receives', holesWithShots(alloc.milo), [4, 10, 13]);
-check('Match 2 — Coby receives', holesWithShots(alloc.coby), []);
+check('Match 2 — Milo receives (raw 15, not re-based to Coby)', holesWithShots(alloc.milo), [13, 4, 10, 1, 11, 7, 17, 9, 15, 3, 18, 6, 12, 8, 16]);
+check('Match 2 — Coby receives (raw 12, not 0 — only Casey plays scratch)', holesWithShots(alloc.coby), [13, 4, 10, 1, 11, 7, 17, 9, 15, 3, 18, 6]);
 
 alloc = singlesAllocations(3, 'church');
-check('Match 3 — Cooper receives', holesWithShots(alloc.cooper), [1, 4, 10, 13]);
-check('Match 3 — Danny receives', holesWithShots(alloc.danny), []);
+check('Match 3 — Cooper receives (raw 10, not re-based to Danny)', holesWithShots(alloc.cooper), [13, 4, 10, 1, 11, 7, 17, 9, 15, 3]);
+check('Match 3 — Danny receives (raw 6, not 0)', holesWithShots(alloc.danny), [13, 4, 10, 1, 11, 7]);
 
 alloc = singlesAllocations(4, 'church');
-check('Match 4 — Jamie receives', holesWithShots(alloc.jamie), []);
-check('Match 4 — Solly receives', holesWithShots(alloc.solly), [1, 4, 7, 10, 11, 13]);
+check('Match 4 — Jamie receives (raw 18 — one shot every hole)', holesWithShots(alloc.jamie), [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18]);
+check('Match 4 — Solly single-stroke holes (raw 24)', holesWithShots(alloc.solly), [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18]);
+check('Match 4 — Solly double-stroke holes', holesWithAtLeast(alloc.solly, 2), [13, 4, 10, 1, 11, 7]);
 
 // --- Afternoon fourball, The Village ---
 function fourballAllocations(matchId) {
@@ -67,11 +72,14 @@ check('Match 5 — Reggel receives', holesWithShots(alloc.reggel), [5, 9]);
 check('Match 5 — Solly single-stroke holes', holesWithShots(alloc.solly), [1, 2, 3, 4, 5, 6, 7, 8, 9]);
 check('Match 5 — Solly double-stroke holes', holesWithAtLeast(alloc.solly, 2), [2, 5, 9]);
 
+// Match 6 has no Casey in it at all -- everyone still plays their own raw
+// village handicap (5/8/3/6), not re-based to Danny even though he's the
+// lowest of the four here.
 alloc = fourballAllocations(6);
-check('Match 6 — Cooper receives', holesWithShots(alloc.cooper), [5, 9]);
-check('Match 6 — Milo receives', holesWithShots(alloc.milo), [2, 5, 6, 8, 9]);
-check('Match 6 — Danny receives', holesWithShots(alloc.danny), []);
-check('Match 6 — Coby receives', holesWithShots(alloc.coby), [2, 5, 9]);
+check('Match 6 — Cooper receives (raw 5)', holesWithShots(alloc.cooper), [9, 5, 2, 8, 6]);
+check('Match 6 — Milo receives (raw 8)', holesWithShots(alloc.milo), [9, 5, 2, 8, 6, 3, 1, 4]);
+check('Match 6 — Danny receives (raw 3, not 0)', holesWithShots(alloc.danny), [9, 5, 2]);
+check('Match 6 — Coby receives (raw 6)', holesWithShots(alloc.coby), [9, 5, 2, 8, 6, 3]);
 
 // --- Team totals from section 2 ---
 function teamTotal(team, key) {

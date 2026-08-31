@@ -87,7 +87,7 @@ const flatAllocations = (ids, holeCount) => {
   check('both picked up on a side -> that side loses the hole', state.resultForHole(1) === 'B');
 }
 
-// --- Danny receives no shots in match 6 despite being on 3 (allocation, cross-checked here too) ---
+// --- Danny still gets his own 3 shots in match 6, even as the lowest of the four there (allocation, cross-checked here too) ---
 {
   const { matchAllocations } = require('../public/js/golf-logic');
   const { COURSES } = require('../src/data');
@@ -96,7 +96,7 @@ const flatAllocations = (ids, holeCount) => {
   ];
   const alloc = matchAllocations(players, COURSES.village.holes);
   const dannyShots = Object.values(alloc.danny).reduce((s, n) => s + n, 0);
-  check('Danny (low man, on 3) receives 0 shots in match 6', dannyShots === 0);
+  check('Danny (on 3, lowest of the four but not Casey) still receives 3 shots in match 6', dannyShots === 3);
 }
 
 if (failures > 0) {

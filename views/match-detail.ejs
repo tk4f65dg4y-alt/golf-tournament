@@ -30,7 +30,7 @@
 
 <div class="card">
   <h2>Shots given</h2>
-  <p class="small muted">Lowest player in the match plays off scratch. Everyone else gets the difference, hardest holes first.</p>
+  <p class="small muted">Everyone plays off their own course handicap, hardest holes first — fixed relative to Casey (scratch), not re-based to whoever's lowest in this particular match.</p>
   <% b.allPlayers.forEach(function(p) { %>
     <% var holes = Object.entries(b.allocations[p.id]).filter(([,n]) => n > 0).sort((x,y)=>x[0]-y[0]); %>
     <div class="match-row">

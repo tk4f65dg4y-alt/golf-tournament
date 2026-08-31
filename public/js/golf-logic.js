@@ -24,10 +24,15 @@
     return allocation;
   }
 
+  // Every player's shots come straight from their own course handicap --
+  // fixed relative to Casey (0, scratch) -- and apply the same way in every
+  // match regardless of opponent. Not re-based to whoever's lowest in a
+  // given pairing: two players who aren't Casey both bring their real
+  // handicaps into a match against each other, same as they would against
+  // Casey.
   function matchAllocations(players, courseHoles) {
-    const low = Math.min.apply(Math, players.map((p) => p.shots));
     const result = {};
-    for (const p of players) result[p.id] = allocate(courseHoles, p.shots - low);
+    for (const p of players) result[p.id] = allocate(courseHoles, p.shots);
     return result;
   }
 
