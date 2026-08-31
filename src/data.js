@@ -13,7 +13,9 @@ const PLAYERS = [
   { id: 'solly', name: 'Solly', team: 'reggel', isCaptain: false, shotsChurch: 24, shotsVillage: 12, pin: '2004' }
 ];
 
-const SPECTATOR = { id: 'spectator', name: 'Spectator', team: null, isCaptain: false, pin: '0000', readOnly: true };
+// No PIN -- see routes/auth.js, which logs anyone hitting /login/spectator
+// straight in without ever rendering the PIN screen.
+const SPECTATOR = { id: 'spectator', name: 'Spectator', team: null, isCaptain: false, pin: null, readOnly: true };
 
 const TEAMS = {
   casey: { id: 'casey', name: 'Team Casey', color: '#2C5282' },

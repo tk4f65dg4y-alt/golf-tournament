@@ -27,7 +27,8 @@ node test/matchstate.test.js
 ## How it works
 
 - **Login** — tap your name, enter your 4-digit PIN. No email, no
-  passwords. A read-only Spectator account is also seeded.
+  passwords. A read-only Spectator account is also seeded — no PIN needed
+  for that one, it logs straight in.
 - **Today** — the team score (confirmed + projected), a link straight into
   your next hole, the day's timings, and a live "Moments" feed (hole wins,
   birdies, closed matches, the Cup itself) generated entirely from the

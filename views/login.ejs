@@ -12,7 +12,7 @@
           <a class="name-btn team-<%= p.team %>" href="/login/<%= p.id %>"><%= p.isCaptain ? '👑 ' : '' %><%= p.name %></a>
         <% }) %>
       </div>
-      <a class="name-btn spectator mt" href="/login/<%= spectator.id %>">👀 Spectator</a>
+      <a class="name-btn spectator mt" href="/login/<%= spectator.id %>">👀 Spectator — no PIN needed</a>
     </div>
   <% } else { %>
     <div class="card">
