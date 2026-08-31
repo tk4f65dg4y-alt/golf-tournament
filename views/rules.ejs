@@ -3,19 +3,20 @@
 <h1>Rules</h1>
 <p class="muted">Match play under the Rules of Golf, with a few sensible concessions to the fact that this is eight friends and not a qualifying event.</p>
 
+<a class="card" style="display:block; text-decoration:none; color:inherit; border: 2px solid var(--gold);" href="/rules/official">
+  <div class="flex between">
+    <div>
+      <h2 class="mb0">🤖 The Rules Official</h2>
+      <p class="small muted" style="margin:6px 0 0;">Stuck on a ruling mid-round? Ask the AI ref — it knows these rules cold. Captains still have final say.</p>
+    </div>
+  </div>
+</a>
+
 <div class="card">
   <ul class="rules-list">
-    <li><strong>No mulligans.</strong> None. Not off the first tee, not anywhere, not for anyone. Your first swing is your score.</li>
-    <li><strong>Ball declaring.</strong> On the first tee of each round, everyone states his make and number out loud. No two players in a group carry the same ball. Play a wrong ball and you lose the hole.</li>
-    <li><strong>Lateral drops.</strong> Allowed. Out of bounds, lost, or in a hazard, drop within two clublengths of where it crossed, no nearer the hole, one shot penalty. Nobody walks back to the tee. Three minutes to look, then drop and move on.</li>
-    <li><strong>Preferred lies.</strong> On the fairway only, within six inches, no nearer the hole. Play it as it lies in the rough, and that includes the semi.</li>
-    <li><strong>Gimmes.</strong> Only if your opponent gives it. Say it out loud and do not pick up until you have heard it. A putt taken without being conceded is a hole lost if the other player calls it.</li>
-    <li><strong>Tees.</strong> Yellows on the Church in the morning, whites on the Village after lunch.</li>
-    <li><strong>Bunkers.</strong> Rake them. Genuinely.</li>
-    <li><strong>Pace.</strong> Ready golf within your match. Lose a clear hole on the group ahead and you wave through or speed up.</li>
-    <li><strong>Shots.</strong> Printed for every match. Check it on the tee, not on the green.</li>
-    <li><strong>Disputes.</strong> The two captains settle it on the spot. If they cannot agree, the hole is halved and everyone moves on.</li>
-    <li><strong>Scoring.</strong> Each match keeps its own state. Agree it out loud walking off every green so there is no argument on the 17th.</li>
+    <% rules.forEach(function(r) { %>
+      <li><strong><%= r.title %></strong> <%= r.text %></li>
+    <% }) %>
   </ul>
 </div>
 

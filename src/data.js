@@ -80,6 +80,22 @@ const MATCHES = [
 
 const SUDDEN_DEATH = { course: 'village', hole: 1, players: ['casey', 'reggel'] };
 
+// Single source of truth for both the static Rules page and the Rules
+// Official's system prompt — edit here, both surfaces stay in sync.
+const RULES = [
+  { title: 'No mulligans.', text: 'None. Not off the first tee, not anywhere, not for anyone. Your first swing is your score.' },
+  { title: 'Ball declaring.', text: 'On the first tee of each round, everyone states his make and number out loud. No two players in a group carry the same ball. Play a wrong ball and you lose the hole.' },
+  { title: 'Lateral drops.', text: 'Allowed. Out of bounds, lost, or in a hazard, drop within two clublengths of where it crossed, no nearer the hole, one shot penalty. Nobody walks back to the tee. Three minutes to look, then drop and move on.' },
+  { title: 'Preferred lies.', text: 'On the fairway only, within six inches, no nearer the hole. Play it as it lies in the rough, and that includes the semi.' },
+  { title: 'Gimmes.', text: 'Only if your opponent gives it. Say it out loud and do not pick up until you have heard it. A putt taken without being conceded is a hole lost if the other player calls it.' },
+  { title: 'Tees.', text: 'Yellows on the Church in the morning, whites on the Village after lunch.' },
+  { title: 'Bunkers.', text: 'Rake them. Genuinely.' },
+  { title: 'Pace.', text: 'Ready golf within your match. Lose a clear hole on the group ahead and you wave through or speed up.' },
+  { title: 'Shots.', text: 'Printed for every match. Check it on the tee, not on the green.' },
+  { title: 'Disputes.', text: 'The two captains settle it on the spot. If they cannot agree, the hole is halved and everyone moves on.' },
+  { title: 'Scoring.', text: "Each match keeps its own state. Agree it out loud walking off every green so there is no argument on the 17th." }
+];
+
 function findPlayer(id) {
   if (id === SPECTATOR.id) return SPECTATOR;
   return PLAYERS.find((p) => p.id === id) || null;
@@ -105,4 +121,4 @@ function shotsFor(player, courseId) {
   return courseId === 'church' ? player.shotsChurch : player.shotsVillage;
 }
 
-module.exports = { PLAYERS, SPECTATOR, TEAMS, COURSES, MATCHES, SUDDEN_DEATH, findPlayer, findMatch, matchesForPlayer, shotsFor, canScoreMatch };
+module.exports = { PLAYERS, SPECTATOR, TEAMS, COURSES, MATCHES, SUDDEN_DEATH, RULES, findPlayer, findMatch, matchesForPlayer, shotsFor, canScoreMatch };

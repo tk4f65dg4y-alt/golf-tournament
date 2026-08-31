@@ -89,3 +89,14 @@ CREATE TABLE IF NOT EXISTS side_bet_participants (
   player_id TEXT NOT NULL,
   UNIQUE (side_bet_id, player_id)
 );
+
+-- Rulings from the AI Rules Official — a shared, visible log so a ruling
+-- settles the argument for the whole group, not just whoever asked.
+CREATE TABLE IF NOT EXISTS rulings (
+  id SERIAL PRIMARY KEY,
+  question TEXT NOT NULL,
+  asked_by TEXT,
+  match_id INTEGER,
+  answer TEXT NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);

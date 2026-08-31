@@ -1,0 +1,44 @@
+<% var title = 'Rules Official'; var active = 'ref' %>
+<%- include('partials/header') %>
+<p><a href="/rules">← Rules</a></p>
+<h1>🤖 The Rules Official</h1>
+<p class="muted small">Ask a quick ruling for a dispute out on the course. Every ruling posts here so the whole group can see it — no "he said the AI said" arguments. Captains still have the final word.</p>
+
+<% if (!configured) { %>
+  <div class="card"><p class="mb0">⚠️ Not switched on yet — a captain needs to add an <code>ANTHROPIC_API_KEY</code> to get the Rules Official running.</p></div>
+<% } %>
+
+<% if (!user.readOnly) { %>
+<div class="card">
+  <h2>Ask a ruling</h2>
+  <% if (error) { %><div class="error-box"><%= error %></div><% } %>
+  <form method="post" action="/rules/official">
+    <div class="field">
+      <label>What happened?</label>
+      <textarea name="question" rows="3" maxlength="600" required placeholder="My drive hit the sprinkler head on the 7th and bounced OB — am I dropping with a penalty or free relief?"></textarea>
+    </div>
+    <div class="field">
+      <label>Which match (optional, for shot context)</label>
+      <select name="matchId">
+        <option value="">— general question —</option>
+        <% matches.forEach(function(m) { %>
+          <option value="<%= m.id %>">Match <%= m.id %> — <%= m.sideA.join('/') %> v <%= m.sideB.join('/') %></option>
+        <% }) %>
+      </select>
+    </div>
+    <button class="btn" type="submit">Get a ruling →</button>
+  </form>
+</div>
+<% } %>
+
+<% rulings.forEach(function(r) { %>
+  <div class="card">
+    <p class="small muted mb0"><%= r.asked_by_name %><% if (r.match_label) { %> · <span class="tag"><%= r.match_label %></span><% } %></p>
+    <p style="font-weight:700; margin: 6px 0 10px;">“<%= r.question %>”</p>
+    <div class="hole-result-banner" style="text-align:left; font-weight:400;">🤖 <%= r.answer %></div>
+  </div>
+<% }) %>
+
+<% if (!rulings.length) { %><div class="card"><p class="muted mb0">No rulings yet — be the first to bring a dispute.</p></div><% } %>
+
+<%- include('partials/footer') %>
