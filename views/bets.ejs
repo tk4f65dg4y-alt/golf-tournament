@@ -1,6 +1,5 @@
 <% var title = 'Bets'; var active = 'bets' %>
 <%- include('partials/header') %>
-<meta http-equiv="refresh" content="15" />
 <h1>🎲 Bets</h1>
 <p class="muted small">Propose a claim, someone else matches it, it settles itself the moment the real result happens — even mid-hole. Custom ones get settled by a captain. No PIN needed to join — share <strong>/bet-in</strong> with anyone who wants in.</p>
 
@@ -197,8 +196,27 @@
       });
     });
   }
-  kindSelect.addEventListener('change', sync);
-  sync();
+  if (kindSelect) {
+    kindSelect.addEventListener('change', sync);
+    sync();
+  }
+
+  // "Live" refresh so open/matched/settled lists stay current without anyone
+  // having to reload by hand — but never while someone's mid-way through the
+  // propose-bet form, or a page reload wipes out whatever they'd typed so
+  // far (a plain <meta refresh> did exactly that, and only the shortest
+  // markets like "hole" ever finished in time).
+  var form = document.getElementById('bet-form');
+  var formTouched = false;
+  if (form) {
+    ['input', 'change'].forEach(function (evt) {
+      form.addEventListener(evt, function () { formTouched = true; });
+    });
+    form.addEventListener('submit', function () { formTouched = false; });
+  }
+  setInterval(function () {
+    if (!formTouched) location.reload();
+  }, 15000);
 })();
 </script>
 
