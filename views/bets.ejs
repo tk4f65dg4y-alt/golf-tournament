@@ -185,7 +185,16 @@
   var kindSelect = document.getElementById('kind-select');
   function sync() {
     document.querySelectorAll('.kind-block').forEach(function (el) {
-      el.hidden = el.getAttribute('data-kind') !== kindSelect.value;
+      var active = el.getAttribute('data-kind') === kindSelect.value;
+      el.hidden = !active;
+      // Every kind-block has its own name="side"/name="matchId" etc. A
+      // hidden block is still submitted with the form unless its fields are
+      // disabled too — leaving them enabled means side/matchId arrive as
+      // arrays (one value per block) and Number(['1','1']) is NaN, so the
+      // match lookup silently fails and nothing gets created.
+      el.querySelectorAll('input, select, textarea').forEach(function (field) {
+        field.disabled = !active;
+      });
     });
   }
   kindSelect.addEventListener('change', sync);
