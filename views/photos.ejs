@@ -1,6 +1,7 @@
 <% var title = 'Photos'; var active = 'photos' %>
 <%- include('partials/header') %>
 <h1>Photos</h1>
+<p class="muted small">One vote each for your favourite — voting for a different one just moves your vote.</p>
 
 <% if (!user.readOnly) { %>
 <div class="card">
@@ -21,6 +22,7 @@
     <div class="photo-grid">
       <% photos.forEach(function(p) { %>
         <div class="photo-item">
+          <% if (p.isTop) { %><span class="tag" style="position:absolute; margin:8px;">🏆 Photo of the day</span><% } %>
           <img src="/uploads/<%= p.filename %>" alt="<%= p.caption || '' %>" />
           <div class="photo-caption">
             <%= p.caption || '' %><% if (p.caption) { %><br/><% } %>
@@ -30,11 +32,37 @@
                   <button type="submit" style="background:none;border:none;color:var(--red);cursor:pointer;padding:0;font:inherit;">delete</button>
                 </form>
             <% } %>
+            <div class="flex gap mt" style="align-items:center;">
+              <form method="post" action="/photos/<%= p.id %>/vote">
+                <button class="btn small <%= p.isMyVote ? '' : 'secondary' %>" type="submit"><%= p.isMyVote ? '✓ Your vote' : '♥ Vote' %></button>
+              </form>
+              <span class="small muted"><%= p.voteCount %> vote<%= p.voteCount === 1 ? '' : 's' %></span>
+            </div>
           </div>
         </div>
       <% }) %>
     </div>
   <% } %>
 </div>
+
+<script>
+(function () {
+  // Live-ish vote tally without yanking the upload form out from under
+  // someone mid-fill -- same fix as the old Bets page's propose-bet bug:
+  // pause the reload while the form has unsaved input, resume once it's
+  // been left alone or actually submitted.
+  var form = document.querySelector('form[action="/photos"]');
+  var touched = false;
+  if (form) {
+    ['input', 'change'].forEach(function (evt) {
+      form.addEventListener(evt, function () { touched = true; });
+    });
+    form.addEventListener('submit', function () { touched = false; });
+  }
+  setInterval(function () {
+    if (!touched) location.reload();
+  }, 20000);
+})();
+</script>
 
 <%- include('partials/footer') %>

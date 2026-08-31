@@ -1,0 +1,88 @@
+<% var title = 'Awards'; var active = 'awards' %>
+<%- include('partials/header') %>
+<meta http-equiv="refresh" content="20" />
+<h1>🏆 Awards</h1>
+<p class="muted small">
+  <% if (cupDecided) { %>Final — the Cup's decided, these are the day's superlatives.
+  <% } else { %>Live — updates as the day goes, so this is "so far", not final.<% } %>
+</p>
+
+<div class="card">
+  <div class="award-row">
+    <div class="award-icon">⛳</div>
+    <div class="award-body">
+      <div class="award-title">Best Round — Gross</div>
+      <% if (awards.bestRoundGross) { %>
+        <div class="award-winner"><%= awards.bestRoundGross.player.isCaptain ? '👑 ' : '' %><%= awards.bestRoundGross.player.name %></div>
+        <div class="small muted"><%= awards.bestRoundGross.grossToPar === 0 ? 'Level par' : (awards.bestRoundGross.grossToPar > 0 ? '+' + awards.bestRoundGross.grossToPar : awards.bestRoundGross.grossToPar) %> over <%= awards.bestRoundGross.holesPlayed %> holes</div>
+      <% } else { %><div class="small muted">Nobody's posted a score yet.</div><% } %>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="award-row">
+    <div class="award-icon">🎯</div>
+    <div class="award-body">
+      <div class="award-title">Best Round — Net</div>
+      <% if (awards.bestRoundNet) { %>
+        <div class="award-winner"><%= awards.bestRoundNet.player.isCaptain ? '👑 ' : '' %><%= awards.bestRoundNet.player.name %></div>
+        <div class="small muted"><%= awards.bestRoundNet.netToPar === 0 ? 'Level par' : (awards.bestRoundNet.netToPar > 0 ? '+' + awards.bestRoundNet.netToPar : awards.bestRoundNet.netToPar) %> over <%= awards.bestRoundNet.holesPlayed %> holes, handicap allowed for</div>
+      <% } else { %><div class="small muted">Nobody's posted a score yet.</div><% } %>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="award-row">
+    <div class="award-icon">🐦</div>
+    <div class="award-body">
+      <div class="award-title">Most Birdies (or better)</div>
+      <% if (awards.mostBirdies) { %>
+        <div class="award-winner"><%= awards.mostBirdies.player.isCaptain ? '👑 ' : '' %><%= awards.mostBirdies.player.name %></div>
+        <div class="small muted"><%= awards.mostBirdies.birdiesPlus %> birdie<%= awards.mostBirdies.birdiesPlus === 1 ? '' : 's' %> or better</div>
+      <% } else { %><div class="small muted">No birdies on the board yet.</div><% } %>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="award-row">
+    <div class="award-icon">🥅</div>
+    <div class="award-body">
+      <div class="award-title">Best Putter</div>
+      <% if (awards.bestPutter) { %>
+        <div class="award-winner"><%= awards.bestPutter.player.isCaptain ? '👑 ' : '' %><%= awards.bestPutter.player.name %></div>
+        <div class="small muted"><%= awards.bestPutter.puttsAvg.toFixed(1) %> putts/hole avg, over <%= awards.bestPutter.puttsCount %> hole<%= awards.bestPutter.puttsCount === 1 ? '' : 's' %> recorded</div>
+      <% } else { %><div class="small muted">No putts recorded yet.</div><% } %>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="award-row">
+    <div class="award-icon">🔥</div>
+    <div class="award-body">
+      <div class="award-title">Biggest Comeback</div>
+      <% if (awards.biggestComeback) { %>
+        <div class="award-winner"><%= awards.biggestComeback.players %></div>
+        <div class="small muted">Down <%= awards.biggestComeback.deficit %> at one point, won Match <%= awards.biggestComeback.matchId %> <%= awards.biggestComeback.closedResult %></div>
+      <% } else { %><div class="small muted">No completed match has come from behind yet.</div><% } %>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="award-row">
+    <div class="award-icon">💥</div>
+    <div class="award-body">
+      <div class="award-title">Biggest Win Margin</div>
+      <% if (awards.biggestWinMargin) { %>
+        <div class="award-winner"><%= awards.biggestWinMargin.players %></div>
+        <div class="small muted">Match <%= awards.biggestWinMargin.matchId %>, <%= awards.biggestWinMargin.closedResult %></div>
+      <% } else { %><div class="small muted">No match has finished yet.</div><% } %>
+    </div>
+  </div>
+</div>
+
+<%- include('partials/footer') %>

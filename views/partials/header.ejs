@@ -20,6 +20,7 @@
     <a class="link <%= typeof active !== 'undefined' && active === 'rules' ? 'active' : '' %>" href="/rules">Rules</a>
     <a class="link <%= typeof active !== 'undefined' && active === 'photos' ? 'active' : '' %>" href="/photos">Photos</a>
     <a class="link <%= typeof active !== 'undefined' && active === 'performance' ? 'active' : '' %>" href="/performance">📊 Performance</a>
+    <a class="link <%= typeof active !== 'undefined' && active === 'awards' ? 'active' : '' %>" href="/awards">🏆 Awards</a>
     <% if (user.isCaptain) { %>
       <a class="link <%= typeof active !== 'undefined' && active === 'captain' ? 'active' : '' %>" href="/captain">Captain</a>
     <% } %>

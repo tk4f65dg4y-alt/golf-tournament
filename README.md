@@ -29,7 +29,9 @@ node test/matchstate.test.js
 - **Login** — tap your name, enter your 4-digit PIN. No email, no
   passwords. A read-only Spectator account is also seeded.
 - **Today** — the team score (confirmed + projected), a link straight into
-  your next hole, and the day's timings.
+  your next hole, the day's timings, and a live "Moments" feed (hole wins,
+  birdies, closed matches, the Cup itself) generated entirely from the
+  scores already being entered — no extra logging needed.
 - **Scoring** — one hole at a time, built to survive patchy course signal:
   every tap writes to the browser's local storage immediately and queues a
   background sync, so a lost bar of signal on the 13th never loses a score.
@@ -50,6 +52,12 @@ node test/matchstate.test.js
   regulation, plus birdies/pars/bogeys derived from gross vs. par. Toggle
   between gross and net. Updates as scores come in, same as the main
   leaderboard.
+- **Awards** — live superlatives derived from the same data: Best Round
+  (gross and net), Most Birdies, Best Putter, Biggest Comeback, Biggest Win
+  Margin. Reads as "so far" until the Cup's actually decided, then it's final.
+- **Photos** — everyone gets one vote for their favourite shot (voting for a
+  different one just moves it); the current leader gets a "Photo of the
+  day" badge, live.
 
 ## Local development
 

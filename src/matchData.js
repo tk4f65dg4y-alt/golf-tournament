@@ -178,4 +178,136 @@ function buildPerformanceData(bundles, scoring) {
   return rows;
 }
 
-module.exports = { loadScores, loadEntryMeta, buildMatchBundle, buildAllMatchBundles, teamScores, cupStatus, buildPerformanceData };
+/**
+ * A chronological "what just happened" feed, entirely derived from data
+ * already being scored -- no separate event log to keep in sync. Every
+ * moment gets its timestamp from the scores that decided it (`updated_at`),
+ * so ordering is exact even across matches running at different paces.
+ */
+function buildMomentsFeed(bundles, cupInfo, suddenDeathRow, limit) {
+  const moments = [];
+  const sideName = (b, side) => (side === 'A' ? b.sideAPlayers : b.sideBPlayers).map((p) => p.name).join(' & ');
+  let latestTs = null;
+  const noteTs = (ts) => {
+    if (ts && (!latestTs || new Date(ts) > new Date(latestTs))) latestTs = ts;
+  };
+
+  for (const b of bundles) {
+    for (const ch of b.courseHoles) {
+      const result = b.state.resultForHole(ch.number);
+      if (result === undefined) continue;
+
+      const metaForHole = b.entryMeta[ch.number] || {};
+      const holeTs = Object.values(metaForHole).map((m) => m.updatedAt).filter(Boolean).sort().pop();
+      if (holeTs) {
+        noteTs(holeTs);
+        const text = result === 'half'
+          ? `Hole ${ch.number} halved — Match ${b.match.id}, ${sideName(b, 'A')} v ${sideName(b, 'B')}`
+          : `${sideName(b, result)} win Hole ${ch.number} — Match ${b.match.id}`;
+        moments.push({ ts: holeTs, icon: '⛳', text });
+      }
+
+      for (const p of b.allPlayers) {
+        const gross = b.scores[ch.number] ? b.scores[ch.number][p.id] : undefined;
+        if (gross === undefined || gross === null) continue;
+        const toPar = gross - ch.par;
+        if (toPar > -1) continue; // birdie or better only -- pars/bogeys aren't "moments"
+        const ts = (metaForHole[p.id] && metaForHole[p.id].updatedAt) || holeTs;
+        if (!ts) continue;
+        noteTs(ts);
+        const eagle = toPar <= -2;
+        moments.push({ ts, icon: eagle ? '🦅' : '🐦', text: `${p.name} makes ${eagle ? 'an eagle' : 'a birdie'} on Hole ${ch.number} — Match ${b.match.id}` });
+      }
+    }
+
+    if (b.state.isComplete) {
+      const allTs = [];
+      for (const h of Object.values(b.entryMeta)) for (const m of Object.values(h)) if (m.updatedAt) allTs.push(m.updatedAt);
+      const ts = allTs.sort().pop();
+      if (ts) {
+        noteTs(ts);
+        const text = b.state.leadingSide === null
+          ? `Match ${b.match.id} closes halved, A/S`
+          : `${sideName(b, b.state.leadingSide)} win Match ${b.match.id} ${b.state.closedResult}`;
+        moments.push({ ts, icon: '🏁', text });
+      }
+    }
+  }
+
+  if (cupInfo.cupDecided) {
+    const ts = (suddenDeathRow && suddenDeathRow.recorded_at) || latestTs;
+    if (ts) {
+      const teamName = cupInfo.winnerTeam === 'casey' ? 'Team Casey' : 'Team Reggel';
+      moments.push({ ts, icon: '🏆', text: `${teamName} win The Aldenham Cup!` });
+    }
+  }
+
+  moments.sort((a, b) => new Date(b.ts) - new Date(a.ts));
+  return typeof limit === 'number' ? moments.slice(0, limit) : moments;
+}
+
+/**
+ * End-of-day (but live, so "so far" until the Cup's actually decided)
+ * superlatives. Reuses buildPerformanceData for the totals-based awards;
+ * comeback and win-margin are computed directly off each match's
+ * hole-by-hole results since they need the match's whole shape, not just
+ * its final state.
+ */
+function buildAwards(bundles) {
+  const grossRows = buildPerformanceData(bundles, 'gross').filter((r) => r.holesPlayed > 0);
+  const netRows = buildPerformanceData(bundles, 'net').filter((r) => r.holesPlayed > 0);
+
+  const bestRoundGross = grossRows[0] || null; // already sorted best-first
+  const bestRoundNet = netRows[0] || null;
+
+  const putters = grossRows.filter((r) => r.puttsCount > 0).sort((a, b) => a.puttsAvg - b.puttsAvg);
+  const bestPutter = putters[0] || null;
+
+  const birdiest = grossRows
+    .map((r) => ({ ...r, birdiesPlus: r.eagleOrBetter + r.birdies }))
+    .filter((r) => r.birdiesPlus > 0)
+    .sort((a, b) => b.birdiesPlus - a.birdiesPlus);
+  const mostBirdies = birdiest[0] || null;
+
+  let biggestComeback = null;
+  let biggestWinMargin = null;
+
+  for (const b of bundles) {
+    if (!b.state.isComplete || b.state.leadingSide === null) continue; // halved matches have no winner to award
+
+    if (!biggestWinMargin || b.state.diff > biggestWinMargin.diff) {
+      biggestWinMargin = {
+        diff: b.state.diff,
+        matchId: b.match.id,
+        players: (b.state.leadingSide === 'A' ? b.sideAPlayers : b.sideBPlayers).map((p) => p.name).join(' & '),
+        closedResult: b.state.closedResult
+      };
+    }
+
+    // Walk the decided holes in order, tracking the running score, to find
+    // how far behind the eventual winner ever fell.
+    let diff = 0; // positive = side A up
+    let minDiff = 0;
+    let maxDiff = 0;
+    for (const r of b.state.results) {
+      if (r.holeNumber > b.state.holesPlayed) break;
+      if (r.winner === 'A') diff += 1;
+      else if (r.winner === 'B') diff -= 1;
+      minDiff = Math.min(minDiff, diff);
+      maxDiff = Math.max(maxDiff, diff);
+    }
+    const deficit = b.state.leadingSide === 'A' ? -minDiff : maxDiff;
+    if (deficit > 0 && (!biggestComeback || deficit > biggestComeback.deficit)) {
+      biggestComeback = {
+        deficit,
+        matchId: b.match.id,
+        players: (b.state.leadingSide === 'A' ? b.sideAPlayers : b.sideBPlayers).map((p) => p.name).join(' & '),
+        closedResult: b.state.closedResult
+      };
+    }
+  }
+
+  return { bestRoundGross, bestRoundNet, bestPutter, mostBirdies, biggestComeback, biggestWinMargin };
+}
+
+module.exports = { loadScores, loadEntryMeta, buildMatchBundle, buildAllMatchBundles, teamScores, cupStatus, buildPerformanceData, buildMomentsFeed, buildAwards };

@@ -34,10 +34,45 @@ function withUploaderNames(photos) {
   return photos;
 }
 
+// One vote per person, upsertable -- adds live vote counts and each photo's
+// leader badge without a separate query per photo.
+async function withVotes(photos, currentUserId) {
+  const { rows: voteRows } = await pool.query('SELECT photo_id, player_id FROM photo_votes');
+  const counts = {};
+  let myVote = null;
+  for (const v of voteRows) {
+    counts[v.photo_id] = (counts[v.photo_id] || 0) + 1;
+    if (v.player_id === currentUserId) myVote = v.photo_id;
+  }
+  const topCount = Math.max(0, ...Object.values(counts));
+  for (const p of photos) {
+    p.voteCount = counts[p.id] || 0;
+    p.isTop = topCount > 0 && p.voteCount === topCount;
+    p.isMyVote = p.id === myVote;
+  }
+  return photos;
+}
+
 router.get('/photos', requireAuth, async (req, res, next) => {
   try {
     const { rows: photos } = await pool.query('SELECT * FROM photos ORDER BY created_at DESC');
-    res.render('photos', { photos: withUploaderNames(photos), error: null });
+    await withVotes(withUploaderNames(photos), req.user.id);
+    res.render('photos', { photos, error: null });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.post('/photos/:id/vote', requireAuth, async (req, res, next) => {
+  try {
+    const { rows } = await pool.query('SELECT id FROM photos WHERE id = $1', [req.params.id]);
+    if (!rows[0]) return res.redirect('/photos');
+    await pool.query(
+      `INSERT INTO photo_votes (photo_id, player_id) VALUES ($1, $2)
+       ON CONFLICT (player_id) DO UPDATE SET photo_id = $1, created_at = now()`,
+      [req.params.id, req.user.id]
+    );
+    res.redirect('/photos');
   } catch (err) {
     next(err);
   }

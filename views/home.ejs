@@ -1,5 +1,6 @@
 <% var title = 'Today'; var active = 'home' %>
 <%- include('partials/header') %>
+<meta http-equiv="refresh" content="20" />
 
 <div class="card">
   <div class="score-hero">
@@ -56,6 +57,17 @@
       <% }) %>
     </div>
   <% } %>
+<% } %>
+
+<% if (moments.length) { %>
+<div class="card">
+  <h2>Moments</h2>
+  <div class="moments-feed">
+    <% moments.forEach(function(m) { %>
+      <div class="moment-row"><span class="moment-icon"><%= m.icon %></span><span><%= m.text %></span></div>
+    <% }) %>
+  </div>
+</div>
 <% } %>
 
 <div class="card">

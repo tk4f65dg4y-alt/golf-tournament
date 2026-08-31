@@ -88,6 +88,16 @@ CREATE TABLE IF NOT EXISTS photos (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+-- One vote per person (not per photo) -- voting for a different photo just
+-- moves your vote, it doesn't add a second one. Whoever's currently ahead
+-- is "Photo of the day" on the Photos page, live.
+CREATE TABLE IF NOT EXISTS photo_votes (
+  id SERIAL PRIMARY KEY,
+  photo_id INTEGER NOT NULL REFERENCES photos(id) ON DELETE CASCADE,
+  player_id TEXT NOT NULL UNIQUE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
 -- Editable rules. Casey and Reggel can rewrite/add/remove these live from
 -- the Captain page -- the public Rules page just reads whatever's here.
 -- Seeded once from the RULES constant in src/data.js the first time this
