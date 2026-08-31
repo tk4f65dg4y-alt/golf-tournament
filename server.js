@@ -17,7 +17,7 @@ const rulesRoutes = require('./routes/rules');
 const captainRoutes = require('./routes/captain');
 const { router: photoRoutes, uploadDir } = require('./routes/photos');
 const sidebetRoutes = require('./routes/sidebets');
-const betsRoutes = require('./routes/bets');
+const performanceRoutes = require('./routes/performance');
 
 const app = express();
 
@@ -82,7 +82,7 @@ app.use(rulesRoutes);
 app.use(captainRoutes);
 app.use(photoRoutes);
 app.use(sidebetRoutes);
-app.use(betsRoutes);
+app.use(performanceRoutes);
 
 app.use((req, res) => {
   res.status(404).render('error', { message: 'Page not found.' });

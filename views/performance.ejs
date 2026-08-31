@@ -1,0 +1,61 @@
+<% var title = 'Performance'; var active = 'performance' %>
+<%- include('partials/header') %>
+<meta http-equiv="refresh" content="20" />
+<h1>📊 Performance</h1>
+<p class="muted small">Live individual stats, built from what's actually been scored so far — updates as holes get entered.</p>
+
+<div class="card">
+  <div class="flex gap wrap" style="margin-bottom:12px;">
+    <a class="btn small <%= scoring === 'gross' ? '' : 'secondary' %>" href="/performance?scoring=gross">Ranked by gross</a>
+    <a class="btn small <%= scoring === 'net' ? '' : 'secondary' %>" href="/performance?scoring=net">Ranked by net</a>
+  </div>
+
+  <% if (!rows.some(function(r){ return r.holesPlayed > 0; })) { %>
+    <p class="muted small mb0">Nobody's posted a score yet — this fills in as the day goes.</p>
+  <% } else { %>
+  <div class="table-scroll">
+    <table class="wide">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Player</th>
+          <th>Holes</th>
+          <th><%= scoring === 'net' ? 'Net' : 'Gross' %> to par</th>
+          <th>Putts (avg)</th>
+          <th>Fairways</th>
+          <th>GIR</th>
+          <th>Birdies+</th>
+          <th>Pars</th>
+          <th>Bogeys+</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% rows.forEach(function(r, i) {
+          var toPar = scoring === 'net' ? r.netToPar : r.grossToPar;
+          var toParText = toPar === null ? '–' : toPar === 0 ? 'E' : (toPar > 0 ? '+' + toPar : String(toPar));
+          var toParClass = toPar === null ? 'muted' : toPar < 0 ? 'good' : toPar > 0 ? 'bad' : '';
+        %>
+        <tr>
+          <td><%= r.holesPlayed ? (i + 1) : '–' %></td>
+          <td>
+            <span class="pill <%= r.player.team %>" style="margin-right:6px;"><%= r.player.team === 'casey' ? 'C' : 'R' %></span>
+            <%= r.player.isCaptain ? '👑 ' : '' %><%= r.player.name %>
+          </td>
+          <td><%= r.holesPlayed %></td>
+          <td class="<%= toParClass %>" style="font-weight:800;"><%= toParText %></td>
+          <td><%= r.puttsAvg === null ? '–' : r.puttsAvg.toFixed(1) %><% if (r.puttsCount) { %><span class="muted small"> (<%= r.puttsTotal %>)</span><% } %></td>
+          <td><%= r.fairwayPct === null ? '–' : r.fairwayPct + '%' %><% if (r.fairwaysCount) { %><span class="muted small"> (<%= r.fairwaysHit %>/<%= r.fairwaysCount %>)</span><% } %></td>
+          <td><%= r.girPct === null ? '–' : r.girPct + '%' %><% if (r.girCount) { %><span class="muted small"> (<%= r.girHit %>/<%= r.girCount %>)</span><% } %></td>
+          <td><%= r.eagleOrBetter + r.birdies %></td>
+          <td><%= r.pars %></td>
+          <td><%= r.bogeys + r.doubleOrWorse %></td>
+        </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  </div>
+  <p class="small muted mt mb0">Birdies/pars/bogeys are always the standard gross-score kind, whichever way the table's ranked. Fairways hit excludes par 3s. GIR = green in regulation.</p>
+  <% } %>
+</div>
+
+<%- include('partials/footer') %>

@@ -167,6 +167,10 @@ th, td { text-align: left; padding: 8px 6px; border-bottom: 1px solid var(--bord
 th { color: var(--muted); font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.05em; }
 .table-scroll { overflow-x: auto; margin: 0 -18px; padding: 0 18px; }
 .table-scroll table { min-width: 520px; }
+.table-scroll table.wide { min-width: 720px; }
+
+.good { color: var(--green); }
+.bad { color: var(--red); }
 
 .tag { font-size: 0.68rem; font-weight: 800; padding: 3px 9px; border-radius: 999px; background: var(--bg-elevated-2); color: var(--gold); text-transform: uppercase; letter-spacing: 0.03em; }
 .flex { display: flex; align-items: center; }
@@ -232,6 +236,18 @@ th { color: var(--muted); font-size: 0.7rem; text-transform: uppercase; letter-s
   background: transparent; color: var(--muted); cursor: pointer; margin-left: 8px; text-transform: uppercase; letter-spacing: 0.02em;
 }
 .pickup-btn.active { background: var(--red); color: #fff; border-color: var(--red); }
+
+.stat-row { display: flex; align-items: center; gap: 10px; margin-top: 10px; padding-top: 10px; border-top: 1px dashed var(--border); flex-wrap: wrap; }
+.stat-block { display: flex; align-items: center; gap: 6px; }
+.stat-label { font-size: 0.7rem; font-weight: 800; color: var(--muted); text-transform: uppercase; letter-spacing: 0.03em; }
+.stepper.small button { width: 32px; height: 32px; border-radius: 8px; font-size: 1rem; }
+.stepper.small .stat-val { font-family: var(--serif); font-size: 1.1rem; font-weight: 900; min-width: 22px; text-align: center; color: var(--ink); }
+.stat-chip {
+  font-size: 0.75rem; font-weight: 800; padding: 6px 12px; border-radius: 999px; border: 1.5px solid var(--border);
+  background: transparent; color: var(--muted); cursor: pointer; text-transform: uppercase; letter-spacing: 0.02em;
+}
+.stat-chip.hit { background: rgba(0,229,255,0.15); color: var(--green); border-color: var(--green); }
+.stat-chip.miss { background: rgba(255,77,109,0.15); color: var(--red); border-color: var(--red); }
 
 .hole-result-banner { text-align: center; font-weight: 700; padding: 10px; border-radius: 10px; background: var(--bg-elevated-2); margin: 14px 0; border: 1px solid var(--border); }
 .sync-status { display: flex; align-items: center; gap: 6px; justify-content: center; font-size: 0.78rem; color: var(--muted); margin-top: 10px; }

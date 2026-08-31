@@ -16,6 +16,7 @@ DROP TABLE IF EXISTS rounds CASCADE;
 DROP TABLE IF EXISTS users CASCADE;
 DROP TABLE IF EXISTS teams CASCADE;
 DROP TABLE IF EXISTS rulings CASCADE; -- AI Rules Official, removed
+DROP TABLE IF EXISTS wagers CASCADE; -- matched 1v1 betting, removed
 
 -- photos / side_bets / side_bet_participants keep the same names in the new
 -- schema too (just with text player ids instead of integer user ids), so
@@ -36,6 +37,9 @@ END $$;
 
 -- One row per player per hole per match. Absence of a row = not entered
 -- yet. picked_up = true (gross NULL) = deliberately no score for that hole.
+-- putts/fairway_hit/gir are optional performance stats captured alongside
+-- the score -- all nullable, since only gross is required to actually
+-- settle a hole.
 CREATE TABLE IF NOT EXISTS scores (
   id SERIAL PRIMARY KEY,
   match_id INTEGER NOT NULL,
@@ -43,10 +47,20 @@ CREATE TABLE IF NOT EXISTS scores (
   player_id TEXT NOT NULL,
   gross INTEGER,
   picked_up BOOLEAN NOT NULL DEFAULT FALSE,
+  putts INTEGER, -- number of putts taken on this hole
+  fairway_hit BOOLEAN, -- NULL = not applicable (e.g. a par 3) or not recorded
+  gir BOOLEAN, -- green in regulation
   entered_by TEXT,
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   UNIQUE (match_id, hole_number, player_id)
 );
+
+-- scores existed before putts/fairway_hit/gir were added -- backfill the
+-- columns onto any table that's missing them so existing deployments don't
+-- need a manual migration.
+ALTER TABLE scores ADD COLUMN IF NOT EXISTS putts INTEGER;
+ALTER TABLE scores ADD COLUMN IF NOT EXISTS fairway_hit BOOLEAN;
+ALTER TABLE scores ADD COLUMN IF NOT EXISTS gir BOOLEAN;
 
 -- The day's schedule. Seeded empty — filled in closer to the day.
 CREATE TABLE IF NOT EXISTS timings (
@@ -89,41 +103,4 @@ CREATE TABLE IF NOT EXISTS side_bet_participants (
   side_bet_id INTEGER NOT NULL REFERENCES side_bets(id) ON DELETE CASCADE,
   player_id TEXT NOT NULL,
   UNIQUE (side_bet_id, player_id)
-);
-
--- Matched 1-v-1 prop bets, open to players, spectators and the no-PIN
--- bettor guest alike. Every wager is a single proposed claim ("Casey wins
--- Hole 7"): the proposer backs it, whoever matches takes the other side of
--- exactly that claim. Structured kinds (cup/match/hole/pars) settle
--- themselves the moment the real result exists -- checked lazily on each
--- page load (see src/wagers.js) rather than a background job, which is
--- what makes hole-level bets genuinely live/in-play. 'custom' kind has no
--- real data to check against, so a captain settles it by hand.
-CREATE TABLE IF NOT EXISTS wagers (
-  id SERIAL PRIMARY KEY,
-  kind TEXT NOT NULL, -- cup | match | hole | pars | custom
-  claim TEXT NOT NULL, -- human-readable, e.g. "Casey wins Hole 7 (Match 1)"
-
-  -- structured reference fields -- only the ones relevant to `kind` are set
-  ref_match_id INTEGER,
-  ref_hole_number INTEGER,
-  ref_side TEXT, -- 'A' | 'B' | 'half' -- the side/outcome the proposer is backing
-  ref_player_id TEXT,
-  ref_line NUMERIC, -- e.g. 84.5
-  ref_over_under TEXT, -- 'over' | 'under'
-  ref_score_type TEXT, -- 'gross' | 'net'
-
-  stake_amount NUMERIC NOT NULL,
-  stake_unit TEXT NOT NULL DEFAULT '£',
-
-  proposer_name TEXT NOT NULL,
-  matcher_name TEXT,
-
-  status TEXT NOT NULL DEFAULT 'open', -- open | matched | settled | void
-  result TEXT, -- proposer_won | matcher_won
-  settle_note TEXT, -- how/why it settled, shown in the feed
-
-  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-  matched_at TIMESTAMPTZ,
-  settled_at TIMESTAMPTZ
 );

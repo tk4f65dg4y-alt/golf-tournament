@@ -8,6 +8,7 @@
 
   const LS_SCORES = `aldenham_scores_${matchId}`;
   const LS_META = `aldenham_meta_${matchId}`;
+  const LS_STATS = `aldenham_stats_${matchId}`;
   const LS_PENDING = `aldenham_pending_${matchId}`;
 
   function loadJSON(key, fallback) {
@@ -25,17 +26,53 @@
   // scores: { [holeNumber]: { [playerId]: gross|null } } — server snapshot as the base.
   let scores = loadJSON(LS_SCORES, null) || JSON.parse(JSON.stringify(raw.scores || {}));
   let meta = loadJSON(LS_META, null) || JSON.parse(JSON.stringify(raw.entryMeta || {}));
-  let pending = loadJSON(LS_PENDING, []); // [{holeNumber, playerId, gross, pickedUp, ts}]
+  // stats: { [holeNumber]: { [playerId]: { putts, fairwayHit, gir } } } — optional, independent of gross.
+  let stats = loadJSON(LS_STATS, null) || JSON.parse(JSON.stringify(raw.stats || {}));
+  let pending = loadJSON(LS_PENDING, []); // [{holeNumber, playerId, gross, pickedUp, putts, fairwayHit, gir, ts}]
 
   function persist() {
     saveJSON(LS_SCORES, scores);
     saveJSON(LS_META, meta);
+    saveJSON(LS_STATS, stats);
     saveJSON(LS_PENDING, pending);
   }
 
   const players = raw.sideA.concat(raw.sideB);
   const allPlayerIds = players.map((p) => p.id);
   const match = { format: raw.format, holeCount: raw.holeCount, sideA: raw.sideA.map((p) => p.id), sideB: raw.sideB.map((p) => p.id), points: raw.points };
+
+  function currentStat(holeNumber, playerId) {
+    return (stats[holeNumber] && stats[holeNumber][playerId]) || {};
+  }
+
+  // Every sync always carries the full known row for that hole/player (gross
+  // + pickedUp + whatever stats are known) -- whichever field actually
+  // changed, the others ride along unchanged so nothing gets clobbered
+  // server-side (see routes/matches.js).
+  function queueSync(holeNumber, playerId) {
+    const gross = scores[holeNumber] ? scores[holeNumber][playerId] : undefined;
+    const pickedUp = gross === null;
+    const s = currentStat(holeNumber, playerId);
+
+    meta[holeNumber] = meta[holeNumber] || {};
+    meta[holeNumber][playerId] = { enteredBy: raw.currentUser.name, updatedAt: new Date().toISOString(), pending: true };
+
+    const key = `${holeNumber}:${playerId}`;
+    pending = pending.filter((e) => `${e.holeNumber}:${e.playerId}` !== key);
+    pending.push({
+      holeNumber, playerId,
+      gross: pickedUp ? null : (gross === undefined ? null : gross),
+      pickedUp: !!pickedUp,
+      putts: typeof s.putts === 'number' ? s.putts : null,
+      fairwayHit: typeof s.fairwayHit === 'boolean' ? s.fairwayHit : null,
+      gir: typeof s.gir === 'boolean' ? s.gir : null,
+      ts: Date.now()
+    });
+
+    persist();
+    render();
+    flushQueue();
+  }
 
   function setEntry(holeNumber, playerId, gross, pickedUp) {
     scores[holeNumber] = scores[holeNumber] || {};
@@ -46,17 +83,17 @@
     } else {
       scores[holeNumber][playerId] = gross;
     }
+    // No score for the hole means no stats for it either.
+    if (pickedUp || gross === null || gross === undefined) {
+      if (stats[holeNumber]) delete stats[holeNumber][playerId];
+    }
+    queueSync(holeNumber, playerId);
+  }
 
-    meta[holeNumber] = meta[holeNumber] || {};
-    meta[holeNumber][playerId] = { enteredBy: raw.currentUser.name, updatedAt: new Date().toISOString(), pending: true };
-
-    const key = `${holeNumber}:${playerId}`;
-    pending = pending.filter((e) => `${e.holeNumber}:${e.playerId}` !== key);
-    pending.push({ holeNumber, playerId, gross: pickedUp ? null : gross, pickedUp: !!pickedUp, ts: Date.now() });
-
-    persist();
-    render();
-    flushQueue();
+  function setStat(holeNumber, playerId, patch) {
+    stats[holeNumber] = stats[holeNumber] || {};
+    stats[holeNumber][playerId] = Object.assign({}, currentStat(holeNumber, playerId), patch);
+    queueSync(holeNumber, playerId);
   }
 
   // ---- Sync ----
@@ -104,6 +141,10 @@
           if (data.entryMeta[h] && data.entryMeta[h][pid]) {
             meta[h] = meta[h] || {};
             meta[h][pid] = { ...data.entryMeta[h][pid], pending: false };
+          }
+          if (data.stats && data.stats[h] && data.stats[h][pid]) {
+            stats[h] = stats[h] || {};
+            stats[h][pid] = data.stats[h][pid];
           }
         }
       }
@@ -173,6 +214,9 @@
       const shots = (raw.allocations[p.id] && raw.allocations[p.id][currentHole]) || 0;
       const net = gross !== undefined && gross !== null ? gross - shots : null;
       const m = meta[currentHole] && meta[currentHole][p.id];
+      const s = currentStat(currentHole, p.id);
+      // Stats only make sense once there's an actual score for the hole.
+      const showStats = !pickedUp && gross !== undefined;
 
       const row = document.createElement('div');
       row.className = `player-row side-${side}`;
@@ -187,9 +231,49 @@
           <button type="button" data-action="inc" data-player="${p.id}" ${pickedUp ? 'disabled' : ''}>+</button>
           <span class="net-note">${net !== null ? `net ${net}` : ''}</span>
         </div>
+        ${showStats ? `
+        <div class="stat-row">
+          <div class="stat-block">
+            <span class="stat-label">Putts</span>
+            <div class="stepper small">
+              <button type="button" data-stat-action="putts-dec" data-player="${p.id}">−</button>
+              <span class="stat-val">${typeof s.putts === 'number' ? s.putts : '–'}</span>
+              <button type="button" data-stat-action="putts-inc" data-player="${p.id}">+</button>
+            </div>
+          </div>
+          ${ch.par !== 3 ? `
+          <button type="button" class="stat-chip ${s.fairwayHit === true ? 'hit' : s.fairwayHit === false ? 'miss' : ''}" data-stat-toggle="fairwayHit" data-player="${p.id}">FW ${s.fairwayHit === true ? '✓' : s.fairwayHit === false ? '✗' : ''}</button>
+          ` : ''}
+          <button type="button" class="stat-chip ${s.gir === true ? 'hit' : s.gir === false ? 'miss' : ''}" data-stat-toggle="gir" data-player="${p.id}">GIR ${s.gir === true ? '✓' : s.gir === false ? '✗' : ''}</button>
+        </div>
+        ` : ''}
         ${m ? `<div class="small muted mt" style="margin-top:6px;">${m.pending ? '⏳ ' : '✓ '}${m.enteredBy || ''}${m.updatedAt ? ' · ' + timeAgo(m.updatedAt) : ''}</div>` : ''}
       `;
       rowsEl.appendChild(row);
+    });
+
+    rowsEl.querySelectorAll('[data-stat-action]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const pid = btn.getAttribute('data-player');
+        const cur = currentStat(currentHole, pid).putts;
+        let next;
+        if (typeof cur !== 'number') {
+          next = 2; // sane starting point either way, like gross landing on par
+        } else {
+          next = btn.getAttribute('data-stat-action') === 'putts-inc' ? Math.min(12, cur + 1) : Math.max(1, cur - 1);
+        }
+        setStat(currentHole, pid, { putts: next });
+      });
+    });
+    rowsEl.querySelectorAll('[data-stat-toggle]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const pid = btn.getAttribute('data-player');
+        const field = btn.getAttribute('data-stat-toggle'); // 'fairwayHit' | 'gir'
+        const cur = currentStat(currentHole, pid)[field];
+        // Cycle: not recorded -> hit -> missed -> not recorded.
+        const next = cur === undefined || cur === null ? true : cur === true ? false : null;
+        setStat(currentHole, pid, { [field]: next });
+      });
     });
 
     rowsEl.querySelectorAll('[data-action]').forEach((btn) => {
