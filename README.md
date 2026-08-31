@@ -24,7 +24,8 @@ node test/matchstate.test.js
 ## How it works
 
 - **Login** — tap your name, enter your 4-digit PIN. No email, no
-  passwords. A read-only Spectator account is also seeded.
+  passwords. A read-only Spectator account is also seeded, plus a no-PIN
+  **/bet-in** link for anyone who just wants to bet.
 - **Today** — the team score (confirmed + projected), a link straight into
   your next hole, and the day's timings.
 - **Scoring** — one hole at a time, built to survive patchy course signal:
@@ -40,6 +41,13 @@ node test/matchstate.test.js
 - **Captain tools** (Casey & Reggel only) — edit the day's timings, reset a
   match's scores, or manually override one hole's score, plus recording a
   sudden-death result if the Cup finishes tied 3–3.
+- **Bets** — matched 1-v-1 prop bets for anyone, playing or not: Cup winner,
+  match winner, hole winner (in-play — bet on a hole before it's played),
+  over/under gross or net pars, or a fully custom claim. A proposer backs a
+  claim with a stake, someone else takes the other side, and structured
+  bets settle themselves the instant the real result posts (even mid-hole);
+  custom ones are settled by a captain. Share `/bet-in` with friends who
+  aren't playing — no PIN needed.
 
 ## Local development
 

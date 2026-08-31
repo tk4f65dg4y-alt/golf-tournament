@@ -1,4 +1,4 @@
-const { PLAYERS, SPECTATOR, TEAMS, findPlayer } = require('./data');
+const { PLAYERS, SPECTATOR, BETTOR, TEAMS, findPlayer } = require('./data');
 
 /** Attaches req.user / res.locals.user (or null) based on the session. Runs on every request. */
 function loadUser(req, res, next) {
@@ -19,10 +19,11 @@ function requireAuth(req, res, next) {
   next();
 }
 
-/** Blocks the read-only spectator account from any write route. */
+/** Blocks anyone who isn't one of the 8 real players from scoring/photos/side-bet routes. */
 function requirePlayer(req, res, next) {
   if (!req.user) return res.redirect('/login');
   if (req.user.readOnly) return res.status(403).render('error', { message: 'Spectators can watch, not score.' });
+  if (req.user.bettorOnly) return res.status(403).render('error', { message: 'That one is for the players — head to Bets instead.' });
   next();
 }
 
@@ -32,4 +33,11 @@ function requireCaptain(req, res, next) {
   next();
 }
 
-module.exports = { PLAYERS, SPECTATOR, loadUser, requireAuth, requirePlayer, requireCaptain };
+/** Anyone except the pure read-only Spectator can place a wager — players, captains, and the guest bettor. */
+function requireBettor(req, res, next) {
+  if (!req.user) return res.redirect('/login');
+  if (req.user.readOnly) return res.status(403).render('error', { message: 'Spectators can watch the bets, not place them.' });
+  next();
+}
+
+module.exports = { PLAYERS, SPECTATOR, BETTOR, loadUser, requireAuth, requirePlayer, requireCaptain, requireBettor };

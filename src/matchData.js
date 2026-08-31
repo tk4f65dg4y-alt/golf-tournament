@@ -62,4 +62,15 @@ function teamScores(bundles) {
   return totals;
 }
 
-module.exports = { loadScores, loadEntryMeta, buildMatchBundle, buildAllMatchBundles, teamScores };
+/** Is the Cup itself decided yet? First to 3.5 wins; a recorded sudden_death row also settles it. */
+function cupStatus(bundles, suddenDeathRow) {
+  const scores = teamScores(bundles);
+  const tiedAt3 = scores.confirmed.casey === 3 && scores.confirmed.reggel === 3 && bundles.every((b) => b.state.isComplete);
+  let winnerTeam = null;
+  if (suddenDeathRow) winnerTeam = suddenDeathRow.winner_team;
+  else if (scores.confirmed.casey >= 3.5) winnerTeam = 'casey';
+  else if (scores.confirmed.reggel >= 3.5) winnerTeam = 'reggel';
+  return { scores, cupDecided: !!winnerTeam, winnerTeam, tiedAt3 };
+}
+
+module.exports = { loadScores, loadEntryMeta, buildMatchBundle, buildAllMatchBundles, teamScores, cupStatus };

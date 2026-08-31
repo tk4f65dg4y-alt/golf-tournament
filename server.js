@@ -14,10 +14,10 @@ const leaderboardRoutes = require('./routes/leaderboard');
 const matchRoutes = require('./routes/matches');
 const courseRoutes = require('./routes/courses');
 const rulesRoutes = require('./routes/rules');
-const rulesOfficialRoutes = require('./routes/rulesOfficial');
 const captainRoutes = require('./routes/captain');
 const { router: photoRoutes, uploadDir } = require('./routes/photos');
 const sidebetRoutes = require('./routes/sidebets');
+const betsRoutes = require('./routes/bets');
 
 const app = express();
 
@@ -79,10 +79,10 @@ app.use(leaderboardRoutes);
 app.use(matchRoutes);
 app.use(courseRoutes);
 app.use(rulesRoutes);
-app.use(rulesOfficialRoutes);
 app.use(captainRoutes);
 app.use(photoRoutes);
 app.use(sidebetRoutes);
+app.use(betsRoutes);
 
 app.use((req, res) => {
   res.status(404).render('error', { message: 'Page not found.' });

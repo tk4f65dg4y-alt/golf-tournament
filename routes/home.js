@@ -3,20 +3,18 @@ const router = express.Router();
 const { pool } = require('../src/db');
 const { requireAuth } = require('../src/auth');
 const { matchesForPlayer, findPlayer } = require('../src/data');
-const { buildAllMatchBundles, buildMatchBundle, teamScores } = require('../src/matchData');
+const { buildAllMatchBundles, cupStatus } = require('../src/matchData');
 
 const SESSION_ORDER = { morning: 0, afternoon: 1 };
 
 router.get('/', requireAuth, async (req, res, next) => {
   try {
     const bundles = await buildAllMatchBundles();
-    const scores = teamScores(bundles);
 
     const { rows: timings } = await pool.query('SELECT * FROM timings ORDER BY sort_order, id');
     const { rows: suddenDeathRows } = await pool.query('SELECT * FROM sudden_death ORDER BY id DESC LIMIT 1');
     const suddenDeath = suddenDeathRows[0] || null;
-    const cupDecided = scores.confirmed.casey >= 3.5 || scores.confirmed.reggel >= 3.5 || !!suddenDeath;
-    const tiedAt3 = scores.confirmed.casey === 3 && scores.confirmed.reggel === 3 && bundles.every((b) => b.state.isComplete);
+    const { scores, cupDecided, tiedAt3 } = cupStatus(bundles, suddenDeath);
 
     let myMatches = [];
     let currentBundle = null;

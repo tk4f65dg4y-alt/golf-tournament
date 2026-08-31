@@ -15,6 +15,7 @@ DROP TABLE IF EXISTS courses CASCADE;
 DROP TABLE IF EXISTS rounds CASCADE;
 DROP TABLE IF EXISTS users CASCADE;
 DROP TABLE IF EXISTS teams CASCADE;
+DROP TABLE IF EXISTS rulings CASCADE; -- AI Rules Official, removed
 
 -- photos / side_bets / side_bet_participants keep the same names in the new
 -- schema too (just with text player ids instead of integer user ids), so
@@ -90,13 +91,39 @@ CREATE TABLE IF NOT EXISTS side_bet_participants (
   UNIQUE (side_bet_id, player_id)
 );
 
--- Rulings from the AI Rules Official — a shared, visible log so a ruling
--- settles the argument for the whole group, not just whoever asked.
-CREATE TABLE IF NOT EXISTS rulings (
+-- Matched 1-v-1 prop bets, open to players, spectators and the no-PIN
+-- bettor guest alike. Every wager is a single proposed claim ("Casey wins
+-- Hole 7"): the proposer backs it, whoever matches takes the other side of
+-- exactly that claim. Structured kinds (cup/match/hole/pars) settle
+-- themselves the moment the real result exists -- checked lazily on each
+-- page load (see src/wagers.js) rather than a background job, which is
+-- what makes hole-level bets genuinely live/in-play. 'custom' kind has no
+-- real data to check against, so a captain settles it by hand.
+CREATE TABLE IF NOT EXISTS wagers (
   id SERIAL PRIMARY KEY,
-  question TEXT NOT NULL,
-  asked_by TEXT,
-  match_id INTEGER,
-  answer TEXT NOT NULL,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+  kind TEXT NOT NULL, -- cup | match | hole | pars | custom
+  claim TEXT NOT NULL, -- human-readable, e.g. "Casey wins Hole 7 (Match 1)"
+
+  -- structured reference fields -- only the ones relevant to `kind` are set
+  ref_match_id INTEGER,
+  ref_hole_number INTEGER,
+  ref_side TEXT, -- 'A' | 'B' | 'half' -- the side/outcome the proposer is backing
+  ref_player_id TEXT,
+  ref_line NUMERIC, -- e.g. 84.5
+  ref_over_under TEXT, -- 'over' | 'under'
+  ref_score_type TEXT, -- 'gross' | 'net'
+
+  stake_amount NUMERIC NOT NULL,
+  stake_unit TEXT NOT NULL DEFAULT '£',
+
+  proposer_name TEXT NOT NULL,
+  matcher_name TEXT,
+
+  status TEXT NOT NULL DEFAULT 'open', -- open | matched | settled | void
+  result TEXT, -- proposer_won | matcher_won
+  settle_note TEXT, -- how/why it settled, shown in the feed
+
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  matched_at TIMESTAMPTZ,
+  settled_at TIMESTAMPTZ
 );

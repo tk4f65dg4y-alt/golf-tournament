@@ -15,6 +15,12 @@ const PLAYERS = [
 
 const SPECTATOR = { id: 'spectator', name: 'Spectator', team: null, isCaptain: false, pin: '0000', readOnly: true };
 
+// No PIN — anyone with the link taps straight in to place/match bets. Not a
+// specific person: each bet captures the bettor's name freehand, like
+// writing your name on a betting slip. Can view everything a spectator can
+// and place wagers, but never scores a hole or touches captain tools.
+const BETTOR = { id: 'bettor', name: 'Guest Bettor', team: null, isCaptain: false, pin: null, bettorOnly: true };
+
 const TEAMS = {
   casey: { id: 'casey', name: 'Team Casey', color: '#2C5282' },
   reggel: { id: 'reggel', name: 'Team Reggel', color: '#9B2C2C' }
@@ -98,6 +104,7 @@ const RULES = [
 
 function findPlayer(id) {
   if (id === SPECTATOR.id) return SPECTATOR;
+  if (id === BETTOR.id) return BETTOR;
   return PLAYERS.find((p) => p.id === id) || null;
 }
 
@@ -121,4 +128,4 @@ function shotsFor(player, courseId) {
   return courseId === 'church' ? player.shotsChurch : player.shotsVillage;
 }
 
-module.exports = { PLAYERS, SPECTATOR, TEAMS, COURSES, MATCHES, SUDDEN_DEATH, RULES, findPlayer, findMatch, matchesForPlayer, shotsFor, canScoreMatch };
+module.exports = { PLAYERS, SPECTATOR, BETTOR, TEAMS, COURSES, MATCHES, SUDDEN_DEATH, RULES, findPlayer, findMatch, matchesForPlayer, shotsFor, canScoreMatch };
