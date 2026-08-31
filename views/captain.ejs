@@ -37,9 +37,10 @@
   </form>
 </div>
 
+<% if (user.id === 'casey') { %>
 <div class="card">
   <h2>Reset a match</h2>
-  <p class="small muted">Clears every score entered for that match. Can't be undone.</p>
+  <p class="small muted">Clears every score entered for that match. Can't be undone. Casey only.</p>
   <% bundles.forEach(function(b) { %>
     <form method="post" action="/captain/matches/<%= b.match.id %>/reset" class="match-row" onsubmit="return confirm('Reset match <%= b.match.id %>? This clears every hole scored so far.')">
       <div><%= b.sideAPlayers.map(p=>p.name).join(' & ') %> v <%= b.sideBPlayers.map(p=>p.name).join(' & ') %></div>
@@ -47,6 +48,15 @@
     </form>
   <% }) %>
 </div>
+
+<div class="card">
+  <h2>Reset everything</h2>
+  <p class="small muted">Clears every score in every match — the whole day, gone. Casey only, and there's no undo.</p>
+  <form method="post" action="/captain/reset-all" onsubmit="return confirm('Reset ALL SIX MATCHES? Every hole scored today, for everyone, gets wiped. This cannot be undone.')">
+    <button class="btn danger" type="submit">Reset all matches</button>
+  </form>
+</div>
+<% } %>
 
 <div class="card">
   <h2>Rules</h2>

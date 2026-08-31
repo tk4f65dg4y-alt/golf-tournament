@@ -32,4 +32,11 @@ function requireCaptain(req, res, next) {
   next();
 }
 
-module.exports = { PLAYERS, SPECTATOR, loadUser, requireAuth, requirePlayer, requireCaptain };
+/** A handful of destructive actions (resetting scores) are Casey-only, not shared with Reggel. */
+function requireCasey(req, res, next) {
+  if (!req.user) return res.redirect('/login');
+  if (req.user.id !== 'casey') return res.status(403).render('error', { message: 'Only Casey can do that.' });
+  next();
+}
+
+module.exports = { PLAYERS, SPECTATOR, loadUser, requireAuth, requirePlayer, requireCaptain, requireCasey };

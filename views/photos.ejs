@@ -23,7 +23,7 @@
       <% photos.forEach(function(p) { %>
         <div class="photo-item">
           <% if (p.isTop) { %><span class="tag" style="position:absolute; margin:8px;">🏆 Photo of the day</span><% } %>
-          <img src="/uploads/<%= p.filename %>" alt="<%= p.caption || '' %>" />
+          <img class="photo-thumb" src="/uploads/<%= p.filename %>" alt="<%= p.caption || '' %>" data-full="/uploads/<%= p.filename %>" data-caption="<%= p.caption || '' %>" />
           <div class="photo-caption">
             <%= p.caption || '' %><% if (p.caption) { %><br/><% } %>
             <span class="muted"><%= p.uploader_name || 'Someone' %></span>
@@ -45,6 +45,12 @@
   <% } %>
 </div>
 
+<div id="lightbox" class="lightbox" hidden>
+  <button type="button" class="lightbox-close" aria-label="Close">✕</button>
+  <img id="lightbox-img" src="" alt="" />
+  <div id="lightbox-caption" class="lightbox-caption"></div>
+</div>
+
 <script>
 (function () {
   // Live-ish vote tally without yanking the upload form out from under
@@ -62,6 +68,32 @@
   setInterval(function () {
     if (!touched) location.reload();
   }, 20000);
+
+  // Tap a thumbnail to view it full-size.
+  var lightbox = document.getElementById('lightbox');
+  var lightboxImg = document.getElementById('lightbox-img');
+  var lightboxCaption = document.getElementById('lightbox-caption');
+  function openLightbox(src, caption) {
+    lightboxImg.src = src;
+    lightboxCaption.textContent = caption || '';
+    lightbox.hidden = false;
+  }
+  function closeLightbox() {
+    lightbox.hidden = true;
+    lightboxImg.src = '';
+  }
+  document.querySelectorAll('.photo-thumb').forEach(function (img) {
+    img.addEventListener('click', function () {
+      openLightbox(img.getAttribute('data-full'), img.getAttribute('data-caption'));
+    });
+  });
+  lightbox.addEventListener('click', function (e) {
+    if (e.target === lightbox) closeLightbox(); // tap the dark backdrop, not the image itself
+  });
+  document.querySelector('.lightbox-close').addEventListener('click', closeLightbox);
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') closeLightbox();
+  });
 })();
 </script>
 

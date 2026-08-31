@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { pool } = require('../src/db');
-const { requireCaptain } = require('../src/auth');
+const { requireCaptain, requireCasey } = require('../src/auth');
 const { MATCHES, TEAMS, findMatch } = require('../src/data');
 const { buildAllMatchBundles } = require('../src/matchData');
 
@@ -91,10 +91,21 @@ router.post('/captain/timings/:id/delete', requireCaptain, async (req, res, next
   }
 });
 
-router.post('/captain/matches/:id/reset', requireCaptain, async (req, res, next) => {
+// Resetting scores (one match, or everything) is Casey-only -- not shared
+// with Reggel like the rest of the captain tools.
+router.post('/captain/matches/:id/reset', requireCasey, async (req, res, next) => {
   try {
     if (!findMatch(req.params.id)) return res.redirect('/captain');
     await pool.query('DELETE FROM scores WHERE match_id = $1', [req.params.id]);
+    res.redirect('/captain');
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.post('/captain/reset-all', requireCasey, async (req, res, next) => {
+  try {
+    await pool.query('DELETE FROM scores');
     res.redirect('/captain');
   } catch (err) {
     next(err);
