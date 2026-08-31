@@ -16,7 +16,6 @@ const courseRoutes = require('./routes/courses');
 const rulesRoutes = require('./routes/rules');
 const captainRoutes = require('./routes/captain');
 const { router: photoRoutes, uploadDir } = require('./routes/photos');
-const sidebetRoutes = require('./routes/sidebets');
 const performanceRoutes = require('./routes/performance');
 
 const app = express();
@@ -81,7 +80,6 @@ app.use(courseRoutes);
 app.use(rulesRoutes);
 app.use(captainRoutes);
 app.use(photoRoutes);
-app.use(sidebetRoutes);
 app.use(performanceRoutes);
 
 app.use((req, res) => {

@@ -9,8 +9,62 @@ router.get('/captain', requireCaptain, async (req, res, next) => {
   try {
     const { rows: timings } = await pool.query('SELECT * FROM timings ORDER BY sort_order, id');
     const { rows: suddenDeathRows } = await pool.query('SELECT * FROM sudden_death ORDER BY id DESC LIMIT 1');
+    const { rows: rules } = await pool.query('SELECT * FROM rules ORDER BY sort_order, id');
     const bundles = await buildAllMatchBundles();
-    res.render('captain', { timings, suddenDeath: suddenDeathRows[0] || null, bundles, teams: TEAMS });
+    res.render('captain', { timings, suddenDeath: suddenDeathRows[0] || null, bundles, teams: TEAMS, rules });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.post('/captain/rules', requireCaptain, async (req, res, next) => {
+  try {
+    const { title, text } = req.body;
+    if (!title || !title.trim() || !text || !text.trim()) return res.redirect('/captain');
+    const { rows } = await pool.query('SELECT COALESCE(MAX(sort_order), -1) + 1 AS n FROM rules');
+    await pool.query('INSERT INTO rules (title, text, sort_order, updated_by) VALUES ($1, $2, $3, $4)', [title.trim(), text.trim(), rows[0].n, req.user.name]);
+    res.redirect('/captain');
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.post('/captain/rules/:id', requireCaptain, async (req, res, next) => {
+  try {
+    const { title, text } = req.body;
+    if (!title || !title.trim() || !text || !text.trim()) return res.redirect('/captain');
+    await pool.query('UPDATE rules SET title = $1, text = $2, updated_by = $3, updated_at = now() WHERE id = $4', [title.trim(), text.trim(), req.user.name, req.params.id]);
+    res.redirect('/captain');
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.post('/captain/rules/:id/delete', requireCaptain, async (req, res, next) => {
+  try {
+    await pool.query('DELETE FROM rules WHERE id = $1', [req.params.id]);
+    res.redirect('/captain');
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Simple up/down reordering -- swaps sort_order with whichever rule is
+// currently adjacent, so it just needs the current ordering, not a
+// separate position field to keep in sync.
+router.post('/captain/rules/:id/move', requireCaptain, async (req, res, next) => {
+  try {
+    const dir = req.body.dir === 'up' ? 'up' : 'down';
+    const { rows } = await pool.query('SELECT * FROM rules ORDER BY sort_order, id');
+    const idx = rows.findIndex((r) => String(r.id) === String(req.params.id));
+    if (idx === -1) return res.redirect('/captain');
+    const swapWith = dir === 'up' ? idx - 1 : idx + 1;
+    if (swapWith < 0 || swapWith >= rows.length) return res.redirect('/captain');
+    const a = rows[idx];
+    const b = rows[swapWith];
+    await pool.query('UPDATE rules SET sort_order = $1 WHERE id = $2', [b.sort_order, a.id]);
+    await pool.query('UPDATE rules SET sort_order = $1 WHERE id = $2', [a.sort_order, b.id]);
+    res.redirect('/captain');
   } catch (err) {
     next(err);
   }

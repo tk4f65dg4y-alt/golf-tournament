@@ -17,20 +17,20 @@ DROP TABLE IF EXISTS users CASCADE;
 DROP TABLE IF EXISTS teams CASCADE;
 DROP TABLE IF EXISTS rulings CASCADE; -- AI Rules Official, removed
 DROP TABLE IF EXISTS wagers CASCADE; -- matched 1v1 betting, removed
+DROP TABLE IF EXISTS side_bet_participants CASCADE; -- Side Bets, removed
+DROP TABLE IF EXISTS side_bets CASCADE; -- Side Bets, removed
 
--- photos / side_bets / side_bet_participants keep the same names in the new
--- schema too (just with text player ids instead of integer user ids), so
--- dropping them unconditionally on every boot would wipe real event data on
--- every restart. Only drop+recreate if the OLD (integer) column is still
--- there; once migrated this block is a permanent no-op.
+-- photos keeps the same name in the new schema too (just with a text
+-- player id instead of an integer user id), so dropping it unconditionally
+-- on every boot would wipe real event data on every restart. Only
+-- drop+recreate if the OLD (integer) column is still there; once migrated
+-- this block is a permanent no-op.
 DO $$
 BEGIN
   IF EXISTS (
     SELECT 1 FROM information_schema.columns
     WHERE table_name = 'photos' AND column_name = 'uploaded_by' AND data_type = 'integer'
   ) THEN
-    DROP TABLE IF EXISTS side_bet_participants CASCADE;
-    DROP TABLE IF EXISTS side_bets CASCADE;
     DROP TABLE IF EXISTS photos CASCADE;
   END IF;
 END $$;
@@ -78,8 +78,8 @@ CREATE TABLE IF NOT EXISTS sudden_death (
   recorded_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
--- Photos and side bets, carried over from the earlier build (adapted to
--- text player ids instead of a users table).
+-- Photos, carried over from the earlier build (adapted to a text player id
+-- instead of a users table).
 CREATE TABLE IF NOT EXISTS photos (
   id SERIAL PRIMARY KEY,
   uploaded_by TEXT,
@@ -88,19 +88,16 @@ CREATE TABLE IF NOT EXISTS photos (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
-CREATE TABLE IF NOT EXISTS side_bets (
+-- Editable rules. Casey and Reggel can rewrite/add/remove these live from
+-- the Captain page -- the public Rules page just reads whatever's here.
+-- Seeded once from the RULES constant in src/data.js the first time this
+-- table is empty (see src/db.js) so there's sensible content from boot,
+-- but after that the database is the source of truth, not the constant.
+CREATE TABLE IF NOT EXISTS rules (
   id SERIAL PRIMARY KEY,
-  description TEXT NOT NULL,
-  wager TEXT,
-  created_by TEXT,
-  status TEXT NOT NULL DEFAULT 'open', -- open | settled
-  winner_player_id TEXT,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
-);
-
-CREATE TABLE IF NOT EXISTS side_bet_participants (
-  id SERIAL PRIMARY KEY,
-  side_bet_id INTEGER NOT NULL REFERENCES side_bets(id) ON DELETE CASCADE,
-  player_id TEXT NOT NULL,
-  UNIQUE (side_bet_id, player_id)
+  title TEXT NOT NULL,
+  text TEXT NOT NULL,
+  sort_order INTEGER NOT NULL DEFAULT 0,
+  updated_by TEXT,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );

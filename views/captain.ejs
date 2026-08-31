@@ -49,6 +49,32 @@
 </div>
 
 <div class="card">
+  <h2>Rules</h2>
+  <p class="small muted">Edit anything, any time — changes show up on the Rules page for everyone straight away.</p>
+  <% rules.forEach(function(r, i) { %>
+    <div class="match-row" style="flex-direction:column; align-items:stretch; gap:8px;">
+      <form method="post" action="/captain/rules/<%= r.id %>">
+        <div class="field"><label>Title</label><input type="text" name="title" value="<%= r.title %>" required /></div>
+        <div class="field"><label>Text</label><textarea name="text" rows="2" required><%= r.text %></textarea></div>
+        <button class="btn small" type="submit">Save</button>
+      </form>
+      <div class="flex gap wrap">
+        <form method="post" action="/captain/rules/<%= r.id %>/move"><input type="hidden" name="dir" value="up" /><button class="btn secondary small" type="submit" <%= i === 0 ? 'disabled' : '' %>>↑ Move up</button></form>
+        <form method="post" action="/captain/rules/<%= r.id %>/move"><input type="hidden" name="dir" value="down" /><button class="btn secondary small" type="submit" <%= i === rules.length - 1 ? 'disabled' : '' %>>↓ Move down</button></form>
+        <form method="post" action="/captain/rules/<%= r.id %>/delete" onsubmit="return confirm('Delete this rule?')"><button class="btn danger small" type="submit">Delete</button></form>
+      </div>
+    </div>
+  <% }) %>
+  <% if (!rules.length) { %><p class="muted small">No rules published yet.</p><% } %>
+  <h2 class="mt" style="margin-top:20px;">Add a new rule</h2>
+  <form method="post" action="/captain/rules">
+    <div class="field"><label>Title</label><input type="text" name="title" placeholder="Mulligans." required /></div>
+    <div class="field"><label>Text</label><textarea name="text" rows="2" placeholder="One per nine, must be announced before you hit it." required></textarea></div>
+    <button class="btn" type="submit">Add rule</button>
+  </form>
+</div>
+
+<div class="card">
   <h2>Manual override</h2>
   <p class="small muted">Set one player's score for one hole directly — for fixing a mistake, not for normal scoring.</p>
   <form method="post" action="/captain/override">

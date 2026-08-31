@@ -9,7 +9,10 @@ scoring from each player's phone, and a live leaderboard.
 **Everything about the event — players, PINs, courses, the draw, shot
 counts — lives in one file: [`src/data.js`](src/data.js).** That's the only
 place anyone needs to edit before the day (e.g. to change a PIN). Nothing
-else in the app needs configuring.
+else in the app needs configuring. The one exception is the rules text: it
+starts as a copy of the `RULES` list in that file, but from first boot
+onward it lives in the database and is editable by a captain from the app
+itself (see Captain tools below) — editing the file after that has no effect.
 
 The shot-allocation and match-scoring logic lives in
 [`public/js/golf-logic.js`](public/js/golf-logic.js) — loaded both by the
@@ -36,10 +39,12 @@ node test/matchstate.test.js
   the side currently ahead in every in-progress match.
 - **Matches** — the full shot allocation and a hole-by-hole grid for every match.
 - **Courses / Rules** — both scorecards and the printed rules, for reference
-  mid-round.
+  mid-round. The rules themselves are editable (see Captain tools below),
+  not fixed in code.
 - **Captain tools** (Casey & Reggel only) — edit the day's timings, reset a
-  match's scores, or manually override one hole's score, plus recording a
-  sudden-death result if the Cup finishes tied 3–3.
+  match's scores, manually override one hole's score, rewrite/add/remove
+  any rule on the Rules page whenever needed, plus recording a sudden-death
+  result if the Cup finishes tied 3–3.
 - **Performance** — a live individual leaderboard built from the stats
   captured alongside each score: putts, fairways hit, and greens in
   regulation, plus birdies/pars/bogeys derived from gross vs. par. Toggle
