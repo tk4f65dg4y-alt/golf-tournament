@@ -8,8 +8,6 @@
 DROP TABLE IF EXISTS match_side_scores CASCADE;
 DROP TABLE IF EXISTS player_hole_scores CASCADE;
 DROP TABLE IF EXISTS match_holes CASCADE;
-DROP TABLE IF EXISTS match_players CASCADE;
-DROP TABLE IF EXISTS matches CASCADE;
 DROP TABLE IF EXISTS course_holes CASCADE;
 DROP TABLE IF EXISTS courses CASCADE;
 DROP TABLE IF EXISTS rounds CASCADE;
@@ -19,6 +17,7 @@ DROP TABLE IF EXISTS rulings CASCADE; -- AI Rules Official, removed
 DROP TABLE IF EXISTS wagers CASCADE; -- matched 1v1 betting, removed
 DROP TABLE IF EXISTS side_bet_participants CASCADE; -- Side Bets, removed
 DROP TABLE IF EXISTS side_bets CASCADE; -- Side Bets, removed
+DROP TABLE IF EXISTS sudden_death CASCADE; -- fixed-draw Cup format, removed
 
 -- photos keeps the same name in the new schema too (just with a text
 -- player id instead of an integer user id), so dropping it unconditionally
@@ -96,12 +95,24 @@ CREATE TABLE IF NOT EXISTS timings (
   sort_order INTEGER NOT NULL DEFAULT 0
 );
 
--- Sudden death only happens if the Cup is tied 3-3 after all six matches.
-CREATE TABLE IF NOT EXISTS sudden_death (
+-- Any of the 8 players can start a new match against any other combination
+-- of them, at any time -- there's no more fixed draw. A match just names a
+-- course, how many holes, and which player is on which side; scores/state
+-- are all derived from the scores table as before.
+CREATE TABLE IF NOT EXISTS matches (
   id SERIAL PRIMARY KEY,
-  winner_team TEXT, -- 'casey' | 'reggel'
-  recorded_by TEXT,
-  recorded_at TIMESTAMPTZ NOT NULL DEFAULT now()
+  course_id TEXT NOT NULL,
+  hole_count INTEGER NOT NULL,
+  created_by TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS match_players (
+  id SERIAL PRIMARY KEY,
+  match_id INTEGER NOT NULL REFERENCES matches(id) ON DELETE CASCADE,
+  player_id TEXT NOT NULL,
+  side TEXT NOT NULL, -- 'A' | 'B'
+  UNIQUE (match_id, player_id)
 );
 
 -- Photos, carried over from the earlier build (adapted to a text player id

@@ -37,10 +37,7 @@
         %>
         <tr>
           <td><%= r.holesPlayed ? (i + 1) : '–' %></td>
-          <td>
-            <span class="pill <%= r.player.team %>" style="margin-right:6px;"><%= r.player.team === 'casey' ? 'C' : 'R' %></span>
-            <%= r.player.isCaptain ? '👑 ' : '' %><%= r.player.name %>
-          </td>
+          <td><%= r.player.isCaptain ? '👑 ' : '' %><%= r.player.name %></td>
           <td><%= r.holesPlayed %></td>
           <td class="<%= toParClass %>" style="font-weight:800;"><%= toParText %></td>
           <td><%= r.puttsAvg === null ? '–' : r.puttsAvg.toFixed(1) %><% if (r.puttsCount) { %><span class="muted small"> (<%= r.puttsTotal %>)</span><% } %></td>

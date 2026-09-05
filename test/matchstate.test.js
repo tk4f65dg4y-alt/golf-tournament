@@ -24,7 +24,7 @@ const flatAllocations = (ids, holeCount) => {
 
 // --- Closes immediately at 3 up with 2 to play -> "3&2" ---
 {
-  const match = { format: 'singles', holeCount: 18, sideA: ['a'], sideB: ['b'], points: 1 };
+  const match = { holeCount: 18, sideA: ['a'], sideB: ['b'] };
   const alloc = flatAllocations(['a', 'b'], 18);
   const scores = {};
   // A wins holes 1-3, halves 4-15 (16 holes played), leaving A 3up with 2 to play (holes 17,18 not yet played... wait need exactly "3 up with 2 to play" = after 16 holes played, 2 remain)
@@ -35,20 +35,20 @@ const flatAllocations = (ids, holeCount) => {
   check('3&2 stops counting extra holes (holesPlayed=16)', state.holesPlayed === 16);
 }
 
-// --- Halved match -> "A/S", 0.5 each ---
+// --- Halved match -> "A/S" ---
 {
-  const match = { format: 'singles', holeCount: 18, sideA: ['a'], sideB: ['b'], points: 1 };
+  const match = { holeCount: 18, sideA: ['a'], sideB: ['b'] };
   const alloc = flatAllocations(['a', 'b'], 18);
   const scores = {};
   for (let h = 1; h <= 18; h++) scores[h] = { a: 4, b: 4 };
   const state = computeMatchState(match, [], alloc, scores);
   check('all 18 halved -> A/S', state.closedResult === 'A/S');
-  check('halved awards 0.5 each', state.pointsA === 0.5 && state.pointsB === 0.5);
+  check('halved match has no leading side', state.leadingSide === null);
 }
 
 // --- Won on the final hole -> "1 up" ---
 {
-  const match = { format: 'singles', holeCount: 18, sideA: ['a'], sideB: ['b'], points: 1 };
+  const match = { holeCount: 18, sideA: ['a'], sideB: ['b'] };
   const alloc = flatAllocations(['a', 'b'], 18);
   const scores = {};
   for (let h = 1; h <= 17; h++) scores[h] = { a: 4, b: 4 };
@@ -59,7 +59,7 @@ const flatAllocations = (ids, holeCount) => {
 
 // --- In-progress display ---
 {
-  const match = { format: 'singles', holeCount: 18, sideA: ['a'], sideB: ['b'], points: 1 };
+  const match = { holeCount: 18, sideA: ['a'], sideB: ['b'] };
   const alloc = flatAllocations(['a', 'b'], 18);
   const scores = {};
   for (let h = 1; h <= 5; h++) scores[h] = { a: 4, b: 4 };
@@ -71,7 +71,7 @@ const flatAllocations = (ids, holeCount) => {
 
 // --- Fourball: picked-up player doesn't count, partner's net still does ---
 {
-  const match = { format: 'fourball', holeCount: 9, sideA: ['a1', 'a2'], sideB: ['b1', 'b2'], points: 1 };
+  const match = { holeCount: 9, sideA: ['a1', 'a2'], sideB: ['b1', 'b2'] };
   const alloc = flatAllocations(['a1', 'a2', 'b1', 'b2'], 9);
   const scores = { 1: { a1: null, a2: 4, b1: 5, b2: 5 } }; // a1 picked up, a2's 4 should still win the hole for side A
   const state = computeMatchState(match, [], alloc, scores);
@@ -80,7 +80,7 @@ const flatAllocations = (ids, holeCount) => {
 
 // --- Fourball: both players on a side with no score lose the hole ---
 {
-  const match = { format: 'fourball', holeCount: 9, sideA: ['a1', 'a2'], sideB: ['b1', 'b2'], points: 1 };
+  const match = { holeCount: 9, sideA: ['a1', 'a2'], sideB: ['b1', 'b2'] };
   const alloc = flatAllocations(['a1', 'a2', 'b1', 'b2'], 9);
   const scores = { 1: { a1: null, a2: null, b1: 5, b2: 6 } };
   const state = computeMatchState(match, [], alloc, scores);

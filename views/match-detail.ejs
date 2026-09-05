@@ -10,9 +10,8 @@
 <% } %>
 
 <div class="card">
-  <span class="tag"><%= b.match.format === 'singles' ? 'Singles' : 'Fourball' %></span>
+  <span class="tag"><%= b.sideAPlayers.length %>v<%= b.sideBPlayers.length %></span>
   <span class="tag"><%= b.course.name %> · <%= b.match.holeCount %> holes</span>
-  <span class="tag">Group <%= b.match.teeGroup %></span>
   <div class="score-hero mt">
     <div class="team-score" style="color: var(--casey)">
       <div class="num"><%= b.state.holesPlayed ? (b.state.leadingSide === 'A' ? b.state.diff : (b.state.leadingSide === 'B' ? '–' + b.state.diff : 'AS')) : '–' %></div>
@@ -78,8 +77,8 @@
             </td>
           <% }) %>
           <td>
-            <% if (winner === 'A') { %><span class="pill casey">Casey</span>
-            <% } else if (winner === 'B') { %><span class="pill reggel">Reggel</span>
+            <% if (winner === 'A') { %><span class="pill side-a"><%= b.sideAPlayers.map(p=>p.name.split(' ')[0]).join('/') %></span>
+            <% } else if (winner === 'B') { %><span class="pill side-b"><%= b.sideBPlayers.map(p=>p.name.split(' ')[0]).join('/') %></span>
             <% } else if (winner === 'half') { %><span class="tag">½</span>
             <% } else { %><span class="muted">–</span><% } %>
           </td>

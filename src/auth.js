@@ -1,4 +1,4 @@
-const { PLAYERS, SPECTATOR, TEAMS, findPlayer } = require('./data');
+const { PLAYERS, SPECTATOR, findPlayer } = require('./data');
 
 /** Attaches req.user / res.locals.user (or null) based on the session. Runs on every request. */
 function loadUser(req, res, next) {
@@ -9,7 +9,7 @@ function loadUser(req, res, next) {
     res.locals.user = null;
     return next();
   }
-  req.user = { ...player, team: player.team ? TEAMS[player.team] : null };
+  req.user = { ...player };
   res.locals.user = req.user;
   next();
 }

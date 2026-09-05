@@ -30,22 +30,6 @@
 <% } %>
 
 <div class="card">
-  <h2>Sudden death</h2>
-  <% if (suddenDeath) { %>
-    <p>🏆 <strong><%= teams[suddenDeath.winner_team].name %></strong> won sudden death (recorded by <%= suddenDeath.recorded_by %>).</p>
-    <form method="post" action="/captain/sudden-death/clear" onsubmit="return confirm('Clear the recorded sudden death result?')">
-      <button class="btn danger small" type="submit">Clear result</button>
-    </form>
-  <% } else { %>
-    <p class="small muted">Only needed if the Cup is tied 3–3 after all six matches. Casey v Reggel, Village 1st.</p>
-    <form method="post" action="/captain/sudden-death" class="flex gap mt">
-      <button class="btn small" type="submit" name="winnerTeam" value="casey">Casey wins sudden death</button>
-      <button class="btn small gold" type="submit" name="winnerTeam" value="reggel">Reggel wins sudden death</button>
-    </form>
-  <% } %>
-</div>
-
-<div class="card">
   <h2>Today's timings</h2>
   <% timings.forEach(function(t) { %>
     <div class="match-row">
@@ -77,8 +61,8 @@
 
 <div class="card">
   <h2>Reset everything</h2>
-  <p class="small muted">Clears every score in every match — the whole day, gone. Casey only, and there's no undo.</p>
-  <form method="post" action="/captain/reset-all" onsubmit="return confirm('Reset ALL SIX MATCHES? Every hole scored today, for everyone, gets wiped. This cannot be undone.')">
+  <p class="small muted">Clears every score in every match — everything, gone. Casey only, and there's no undo.</p>
+  <form method="post" action="/captain/reset-all" onsubmit="return confirm('Reset EVERY MATCH? Every hole scored so far, for everyone, gets wiped. This cannot be undone.')">
     <button class="btn danger" type="submit">Reset all matches</button>
   </form>
 </div>

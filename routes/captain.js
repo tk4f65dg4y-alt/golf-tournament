@@ -2,13 +2,12 @@ const express = require('express');
 const router = express.Router();
 const { pool } = require('../src/db');
 const { requireCaptain, requireCasey } = require('../src/auth');
-const { MATCHES, TEAMS, findMatch, findPlayer } = require('../src/data');
-const { buildAllMatchBundles } = require('../src/matchData');
+const { findPlayer } = require('../src/data');
+const { buildAllMatchBundles, findMatch, listMatchIds } = require('../src/matchData');
 
 router.get('/captain', requireCaptain, async (req, res, next) => {
   try {
     const { rows: timings } = await pool.query('SELECT * FROM timings ORDER BY sort_order, id');
-    const { rows: suddenDeathRows } = await pool.query('SELECT * FROM sudden_death ORDER BY id DESC LIMIT 1');
     const { rows: rules } = await pool.query('SELECT * FROM rules ORDER BY sort_order, id');
     const bundles = await buildAllMatchBundles();
 
@@ -36,7 +35,7 @@ router.get('/captain', requireCaptain, async (req, res, next) => {
       }
     }
 
-    res.render('captain', { timings, suddenDeath: suddenDeathRows[0] || null, bundles, teams: TEAMS, rules, conflicts });
+    res.render('captain', { timings, bundles, rules, conflicts });
   } catch (err) {
     next(err);
   }
@@ -48,7 +47,7 @@ router.get('/captain', requireCaptain, async (req, res, next) => {
 // dispute resolution.
 router.post('/captain/conflicts/:matchId/:hole/:playerId/resolve', requireCaptain, async (req, res, next) => {
   try {
-    const match = findMatch(req.params.matchId);
+    const match = await findMatch(req.params.matchId);
     if (!match) return res.redirect('/captain');
     const h = Number(req.params.hole);
     const playerId = req.params.playerId;
@@ -156,7 +155,7 @@ router.post('/captain/timings/:id/delete', requireCaptain, async (req, res, next
 // gone, not just "not synced yet" -- see public/js/scoring.js.
 router.post('/captain/matches/:id/reset', requireCasey, async (req, res, next) => {
   try {
-    const match = findMatch(req.params.id);
+    const match = await findMatch(req.params.id);
     if (!match) return res.redirect('/captain');
     await pool.query('DELETE FROM scores WHERE match_id = $1', [match.id]);
     await pool.query(
@@ -173,11 +172,12 @@ router.post('/captain/matches/:id/reset', requireCasey, async (req, res, next) =
 router.post('/captain/reset-all', requireCasey, async (req, res, next) => {
   try {
     await pool.query('DELETE FROM scores');
-    for (const m of MATCHES) {
+    const ids = await listMatchIds();
+    for (const id of ids) {
       await pool.query(
         `INSERT INTO match_resets (match_id, reset_at) VALUES ($1, now())
          ON CONFLICT (match_id) DO UPDATE SET reset_at = now()`,
-        [m.id]
+        [id]
       );
     }
     res.redirect('/captain');
@@ -189,7 +189,7 @@ router.post('/captain/reset-all', requireCasey, async (req, res, next) => {
 router.post('/captain/override', requireCaptain, async (req, res, next) => {
   try {
     const { matchId, holeNumber, playerId, gross, pickedUp } = req.body;
-    const match = findMatch(matchId);
+    const match = await findMatch(matchId);
     if (!match) return res.redirect('/captain');
     const h = Number(holeNumber);
     if (!h || h < 1 || h > match.holeCount) return res.redirect('/captain');
@@ -217,26 +217,6 @@ router.post('/captain/override', requireCaptain, async (req, res, next) => {
         );
       }
     }
-    res.redirect('/captain');
-  } catch (err) {
-    next(err);
-  }
-});
-
-router.post('/captain/sudden-death', requireCaptain, async (req, res, next) => {
-  try {
-    const { winnerTeam } = req.body;
-    if (!['casey', 'reggel'].includes(winnerTeam)) return res.redirect('/captain');
-    await pool.query('INSERT INTO sudden_death (winner_team, recorded_by) VALUES ($1, $2)', [winnerTeam, req.user.name]);
-    res.redirect('/');
-  } catch (err) {
-    next(err);
-  }
-});
-
-router.post('/captain/sudden-death/clear', requireCaptain, async (req, res, next) => {
-  try {
-    await pool.query('DELETE FROM sudden_death');
     res.redirect('/captain');
   } catch (err) {
     next(err);

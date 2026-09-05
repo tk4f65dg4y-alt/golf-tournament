@@ -126,8 +126,8 @@ h3 { font-size: 1.02rem; margin: 0 0 8px; }
 .pill.live { background: rgba(255, 92, 92, 0.15); color: var(--red); box-shadow: 0 0 0 1px rgba(255,92,92,0.35) inset; animation: livepulse 1.8s ease-in-out infinite; }
 .pill.scheduled { background: var(--bg-elevated-2); color: var(--muted); }
 .pill.complete { background: rgba(0, 229, 255, 0.15); color: var(--green); box-shadow: 0 0 0 1px rgba(0,229,255,0.35) inset; }
-.pill.casey { background: rgba(61, 125, 255, 0.15); color: var(--casey); box-shadow: 0 0 0 1px rgba(61,125,255,0.35) inset; }
-.pill.reggel { background: rgba(255, 45, 107, 0.15); color: var(--reggel); box-shadow: 0 0 0 1px rgba(255,45,107,0.35) inset; }
+.pill.side-a { background: rgba(61, 125, 255, 0.15); color: var(--casey); box-shadow: 0 0 0 1px rgba(61,125,255,0.35) inset; }
+.pill.side-b { background: rgba(255, 45, 107, 0.15); color: var(--reggel); box-shadow: 0 0 0 1px rgba(255,45,107,0.35) inset; }
 @keyframes livepulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.55; } }
 
 .match-row { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 12px 0; border-bottom: 1px solid var(--border); }
@@ -201,8 +201,7 @@ th { color: var(--muted); font-size: 0.7rem; text-transform: uppercase; letter-s
   font-size: 1.05rem; border: 2px solid var(--border); background: var(--bg-elevated-2); color: var(--ink);
 }
 .name-btn:hover { text-decoration: none; background: var(--bg-elevated); }
-.name-btn.team-casey { border-color: var(--casey); box-shadow: 0 0 18px -8px var(--casey); }
-.name-btn.team-reggel { border-color: var(--reggel); box-shadow: 0 0 18px -8px var(--reggel); }
+.name-btn.captain { border-color: var(--gold); box-shadow: 0 0 18px -8px var(--gold); }
 .name-btn.spectator { display: block; width: 100%; margin-top: 10px; border-style: dashed; color: var(--muted); box-shadow: none; }
 
 .pin-display { display: flex; justify-content: center; gap: 14px; margin: 20px 0; }

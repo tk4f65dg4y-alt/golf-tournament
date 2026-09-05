@@ -1,6 +1,73 @@
 const { pool } = require('./db');
-const { COURSES, MATCHES, findPlayer, findMatch, shotsFor } = require('./data');
+const { COURSES, PLAYERS, findPlayer, shotsFor } = require('./data');
 const { matchAllocations, computeMatchState } = require('../public/js/golf-logic');
+
+/**
+ * Matches are no longer fixed -- any of the 8 players can start a new one
+ * against any combination of the others, at any time. `matches` names the
+ * course and hole count; `match_players` names who's on which side. These
+ * helpers turn those rows into the same { id, courseId, holeCount, sideA,
+ * sideB } shape the old hardcoded MATCHES array used to provide directly,
+ * so everything downstream (allocations, scoring, moments, awards) is
+ * unchanged.
+ */
+async function loadMatchPlayers(matchId) {
+  const { rows } = await pool.query('SELECT player_id, side FROM match_players WHERE match_id = $1 ORDER BY id', [matchId]);
+  return rows;
+}
+
+async function findMatch(id) {
+  const matchId = Number(id);
+  if (!Number.isFinite(matchId)) return null;
+  const { rows } = await pool.query('SELECT * FROM matches WHERE id = $1', [matchId]);
+  const row = rows[0];
+  if (!row) return null;
+  const players = await loadMatchPlayers(matchId);
+  return {
+    id: row.id,
+    courseId: row.course_id,
+    holeCount: row.hole_count,
+    sideA: players.filter((p) => p.side === 'A').map((p) => p.player_id),
+    sideB: players.filter((p) => p.side === 'B').map((p) => p.player_id),
+    createdBy: row.created_by,
+    createdAt: row.created_at
+  };
+}
+
+/** Every match id, newest first -- the order the Matches/Leaderboard/Captain lists show them in. */
+async function listMatchIds() {
+  const { rows } = await pool.query('SELECT id FROM matches ORDER BY created_at DESC, id DESC');
+  return rows.map((r) => r.id);
+}
+
+async function matchesForPlayer(playerId) {
+  // match_players has UNIQUE (match_id, player_id), so this join can't
+  // produce more than one row per match -- no DISTINCT needed (and Postgres
+  // wouldn't allow ORDER BY created_at alongside one anyway).
+  const { rows } = await pool.query(
+    `SELECT m.id FROM matches m JOIN match_players mp ON mp.match_id = m.id
+     WHERE mp.player_id = $1 ORDER BY m.created_at DESC, m.id DESC`,
+    [playerId]
+  );
+  const matches = await Promise.all(rows.map((r) => findMatch(r.id)));
+  return matches.filter(Boolean);
+}
+
+/** Any combination of the 8 players, on either side, any size -- validated by the caller (routes/matches.js). */
+async function createMatch({ courseId, holeCount, sideA, sideB, createdBy }) {
+  const { rows } = await pool.query(
+    'INSERT INTO matches (course_id, hole_count, created_by) VALUES ($1, $2, $3) RETURNING id',
+    [courseId, holeCount, createdBy]
+  );
+  const matchId = rows[0].id;
+  for (const playerId of sideA) {
+    await pool.query('INSERT INTO match_players (match_id, player_id, side) VALUES ($1, $2, $3)', [matchId, playerId, 'A']);
+  }
+  for (const playerId of sideB) {
+    await pool.query('INSERT INTO match_players (match_id, player_id, side) VALUES ($1, $2, $3)', [matchId, playerId, 'B']);
+  }
+  return matchId;
+}
 
 /**
  * Load raw score rows for a match as { holeNumber: { playerId: gross|null } }
@@ -67,7 +134,7 @@ async function loadEntryMeta(matchId) {
 
 /** Full bundle for a match: config + players + course + allocations + live state. */
 async function buildMatchBundle(matchId) {
-  const match = findMatch(matchId);
+  const match = await findMatch(matchId);
   if (!match) return null;
   const course = COURSES[match.courseId];
   const courseHoles = course.holes.slice(0, match.holeCount);
@@ -90,40 +157,52 @@ async function buildMatchBundle(matchId) {
 }
 
 async function buildAllMatchBundles() {
-  return Promise.all(MATCHES.map((m) => buildMatchBundle(m.id)));
-}
-
-// The draw always puts Team Casey on side A and Team Reggel on side B (see
-// src/data.js MATCHES) — that's what lets team scoring just sum by side
-// rather than re-deriving team membership from each player on every match.
-function teamScores(bundles) {
-  const totals = { confirmed: { casey: 0, reggel: 0 }, projected: { casey: 0, reggel: 0 } };
-  for (const b of bundles) {
-    totals.confirmed.casey += b.state.pointsA || 0;
-    totals.confirmed.reggel += b.state.pointsB || 0;
-    totals.projected.casey += b.state.projectedA || 0;
-    totals.projected.reggel += b.state.projectedB || 0;
-  }
-  return totals;
-}
-
-/** Is the Cup itself decided yet? First to 3.5 wins; a recorded sudden_death row also settles it. */
-function cupStatus(bundles, suddenDeathRow) {
-  const scores = teamScores(bundles);
-  const tiedAt3 = scores.confirmed.casey === 3 && scores.confirmed.reggel === 3 && bundles.every((b) => b.state.isComplete);
-  let winnerTeam = null;
-  if (suddenDeathRow) winnerTeam = suddenDeathRow.winner_team;
-  else if (scores.confirmed.casey >= 3.5) winnerTeam = 'casey';
-  else if (scores.confirmed.reggel >= 3.5) winnerTeam = 'reggel';
-  return { scores, cupDecided: !!winnerTeam, winnerTeam, tiedAt3 };
+  const ids = await listMatchIds();
+  return Promise.all(ids.map((id) => buildMatchBundle(id)));
 }
 
 /**
- * Individual performance stats across every match a player's in (each
- * player plays exactly two: one singles + one fourball). Birdies/pars/
- * bogeys are always classified off the gross score (the standard golf
- * meaning of the term); `scoring` only picks which total ("to par") the
- * table is ranked and displayed by.
+ * One ranked list of all 8 players by overall win/loss/half record across
+ * every completed match they've played -- who's beaten whom, all in all,
+ * regardless of who it was against or which side of a match they were on.
+ * Not a head-to-head grid between specific pairs.
+ */
+function buildStandings(bundles) {
+  const byPlayer = {};
+  for (const p of PLAYERS) byPlayer[p.id] = { player: p, played: 0, wins: 0, losses: 0, halves: 0 };
+
+  for (const b of bundles) {
+    if (!b.state.isComplete) continue;
+    const { leadingSide } = b.state;
+    for (const p of b.sideAPlayers) {
+      const row = byPlayer[p.id];
+      if (!row) continue;
+      row.played += 1;
+      if (leadingSide === null) row.halves += 1;
+      else if (leadingSide === 'A') row.wins += 1;
+      else row.losses += 1;
+    }
+    for (const p of b.sideBPlayers) {
+      const row = byPlayer[p.id];
+      if (!row) continue;
+      row.played += 1;
+      if (leadingSide === null) row.halves += 1;
+      else if (leadingSide === 'B') row.wins += 1;
+      else row.losses += 1;
+    }
+  }
+
+  const rows = Object.values(byPlayer).map((row) => ({ ...row, points: row.wins + 0.5 * row.halves }));
+  rows.sort((a, b) => b.points - a.points || b.wins - a.wins || a.losses - b.losses || a.player.name.localeCompare(b.player.name));
+  return rows;
+}
+
+/**
+ * Individual performance stats across every match a player's in -- however
+ * many that turns out to be, since anyone can start a new one at any time.
+ * Birdies/pars/bogeys are always classified off the gross score (the
+ * standard golf meaning of the term); `scoring` only picks which total
+ * ("to par") the table is ranked and displayed by.
  */
 function buildPerformanceData(bundles, scoring) {
   const byPlayer = {};
@@ -217,13 +296,9 @@ function buildPerformanceData(bundles, scoring) {
  * moment gets its timestamp from the scores that decided it (`updated_at`),
  * so ordering is exact even across matches running at different paces.
  */
-function buildMomentsFeed(bundles, cupInfo, suddenDeathRow, limit) {
+function buildMomentsFeed(bundles, limit) {
   const moments = [];
   const sideName = (b, side) => (side === 'A' ? b.sideAPlayers : b.sideBPlayers).map((p) => p.name).join(' & ');
-  let latestTs = null;
-  const noteTs = (ts) => {
-    if (ts && (!latestTs || new Date(ts) > new Date(latestTs))) latestTs = ts;
-  };
 
   for (const b of bundles) {
     for (const ch of b.courseHoles) {
@@ -233,7 +308,6 @@ function buildMomentsFeed(bundles, cupInfo, suddenDeathRow, limit) {
       const metaForHole = b.entryMeta[ch.number] || {};
       const holeTs = Object.values(metaForHole).map((m) => m.updatedAt).filter(Boolean).sort().pop();
       if (holeTs) {
-        noteTs(holeTs);
         const text = result === 'half'
           ? `Hole ${ch.number} halved — Match ${b.match.id}, ${sideName(b, 'A')} v ${sideName(b, 'B')}`
           : `${sideName(b, result)} win Hole ${ch.number} — Match ${b.match.id}`;
@@ -247,7 +321,6 @@ function buildMomentsFeed(bundles, cupInfo, suddenDeathRow, limit) {
         if (toPar > -1) continue; // birdie or better only -- pars/bogeys aren't "moments"
         const ts = (metaForHole[p.id] && metaForHole[p.id].updatedAt) || holeTs;
         if (!ts) continue;
-        noteTs(ts);
         const eagle = toPar <= -2;
         moments.push({ ts, icon: eagle ? '🦅' : '🐦', text: `${p.name} makes ${eagle ? 'an eagle' : 'a birdie'} on Hole ${ch.number} — Match ${b.match.id}` });
       }
@@ -258,7 +331,6 @@ function buildMomentsFeed(bundles, cupInfo, suddenDeathRow, limit) {
       for (const h of Object.values(b.entryMeta)) for (const m of Object.values(h)) if (m.updatedAt) allTs.push(m.updatedAt);
       const ts = allTs.sort().pop();
       if (ts) {
-        noteTs(ts);
         const text = b.state.leadingSide === null
           ? `Match ${b.match.id} closes halved, A/S`
           : `${sideName(b, b.state.leadingSide)} win Match ${b.match.id} ${b.state.closedResult}`;
@@ -267,24 +339,16 @@ function buildMomentsFeed(bundles, cupInfo, suddenDeathRow, limit) {
     }
   }
 
-  if (cupInfo.cupDecided) {
-    const ts = (suddenDeathRow && suddenDeathRow.recorded_at) || latestTs;
-    if (ts) {
-      const teamName = cupInfo.winnerTeam === 'casey' ? 'Team Casey' : 'Team Reggel';
-      moments.push({ ts, icon: '🏆', text: `${teamName} win The Aldenham Cup!` });
-    }
-  }
-
   moments.sort((a, b) => new Date(b.ts) - new Date(a.ts));
   return typeof limit === 'number' ? moments.slice(0, limit) : moments;
 }
 
 /**
- * End-of-day (but live, so "so far" until the Cup's actually decided)
- * superlatives. Reuses buildPerformanceData for the totals-based awards;
- * comeback and win-margin are computed directly off each match's
- * hole-by-hole results since they need the match's whole shape, not just
- * its final state.
+ * Live, ongoing superlatives across every match played so far -- always
+ * "so far", since there's no fixed end to update as new matches get played.
+ * Reuses buildPerformanceData for the totals-based awards; comeback and
+ * win-margin are computed directly off each match's hole-by-hole results
+ * since they need the match's whole shape, not just its final state.
  */
 function buildAwards(bundles) {
   const grossRows = buildPerformanceData(bundles, 'gross').filter((r) => r.holesPlayed > 0);
@@ -343,4 +407,17 @@ function buildAwards(bundles) {
   return { bestRoundGross, bestRoundNet, bestPutter, mostBirdies, biggestComeback, biggestWinMargin };
 }
 
-module.exports = { loadScores, loadEntryMeta, buildMatchBundle, buildAllMatchBundles, teamScores, cupStatus, buildPerformanceData, buildMomentsFeed, buildAwards };
+module.exports = {
+  findMatch,
+  listMatchIds,
+  matchesForPlayer,
+  createMatch,
+  loadScores,
+  loadEntryMeta,
+  buildMatchBundle,
+  buildAllMatchBundles,
+  buildStandings,
+  buildPerformanceData,
+  buildMomentsFeed,
+  buildAwards
+};

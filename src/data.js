@@ -1,26 +1,24 @@
-// The Aldenham Cup — single source of truth for the day.
-// This is the one file to edit before the day: player PINs, the draw, the
-// two scorecards. Everything else derives from this.
+// The Aldenham Cup — single source of truth for the players and courses.
+// This is the one file to edit for player PINs and the two scorecards.
+// Matches are no longer fixed here -- any of the 8 players can start a new
+// one against any combination of the others, at any time (see
+// src/matchData.js) -- so the database, not this file, is the source of
+// truth for who's playing whom.
 
 const PLAYERS = [
-  { id: 'casey', name: 'Casey', team: 'casey', isCaptain: true, shotsChurch: 0, shotsVillage: 0, pin: '1001' },
-  { id: 'cooper', name: 'Cooper', team: 'casey', isCaptain: false, shotsChurch: 10, shotsVillage: 5, pin: '1002' },
-  { id: 'milo', name: 'Milo', team: 'casey', isCaptain: false, shotsChurch: 15, shotsVillage: 8, pin: '1003' },
-  { id: 'jamie', name: 'Jamie', team: 'casey', isCaptain: false, shotsChurch: 18, shotsVillage: 9, pin: '1004' },
-  { id: 'reggel', name: 'Reggel', team: 'reggel', isCaptain: true, shotsChurch: 3, shotsVillage: 2, pin: '2001' },
-  { id: 'danny', name: 'Danny', team: 'reggel', isCaptain: false, shotsChurch: 6, shotsVillage: 3, pin: '2002' },
-  { id: 'coby', name: 'Coby', team: 'reggel', isCaptain: false, shotsChurch: 12, shotsVillage: 6, pin: '2003' },
-  { id: 'solly', name: 'Solly', team: 'reggel', isCaptain: false, shotsChurch: 24, shotsVillage: 12, pin: '2004' }
+  { id: 'casey', name: 'Casey', isCaptain: true, shotsChurch: 0, shotsVillage: 0, pin: '1001' },
+  { id: 'cooper', name: 'Cooper', isCaptain: false, shotsChurch: 10, shotsVillage: 5, pin: '1002' },
+  { id: 'milo', name: 'Milo', isCaptain: false, shotsChurch: 15, shotsVillage: 8, pin: '1003' },
+  { id: 'jamie', name: 'Jamie', isCaptain: false, shotsChurch: 18, shotsVillage: 9, pin: '1004' },
+  { id: 'reggel', name: 'Reggel', isCaptain: true, shotsChurch: 3, shotsVillage: 2, pin: '2001' },
+  { id: 'danny', name: 'Danny', isCaptain: false, shotsChurch: 6, shotsVillage: 3, pin: '2002' },
+  { id: 'coby', name: 'Coby', isCaptain: false, shotsChurch: 12, shotsVillage: 6, pin: '2003' },
+  { id: 'solly', name: 'Solly', isCaptain: false, shotsChurch: 24, shotsVillage: 12, pin: '2004' }
 ];
 
 // No PIN -- see routes/auth.js, which logs anyone hitting /login/spectator
 // straight in without ever rendering the PIN screen.
-const SPECTATOR = { id: 'spectator', name: 'Spectator', team: null, isCaptain: false, pin: null, readOnly: true };
-
-const TEAMS = {
-  casey: { id: 'casey', name: 'Team Casey', color: '#2C5282' },
-  reggel: { id: 'reggel', name: 'Team Reggel', color: '#9B2C2C' }
-};
+const SPECTATOR = { id: 'spectator', name: 'Spectator', isCaptain: false, pin: null, readOnly: true };
 
 const COURSES = {
   church: {
@@ -70,18 +68,6 @@ const COURSES = {
   }
 };
 
-// points: every match is worth 1 (6 matches, 6 points total, per the brief).
-const MATCHES = [
-  { id: 1, session: 'morning', format: 'singles', courseId: 'church', holeCount: 18, teeGroup: 1, points: 1, sideA: ['casey'], sideB: ['reggel'] },
-  { id: 2, session: 'morning', format: 'singles', courseId: 'church', holeCount: 18, teeGroup: 1, points: 1, sideA: ['milo'], sideB: ['coby'] },
-  { id: 3, session: 'morning', format: 'singles', courseId: 'church', holeCount: 18, teeGroup: 2, points: 1, sideA: ['cooper'], sideB: ['danny'] },
-  { id: 4, session: 'morning', format: 'singles', courseId: 'church', holeCount: 18, teeGroup: 2, points: 1, sideA: ['jamie'], sideB: ['solly'] },
-  { id: 5, session: 'afternoon', format: 'fourball', courseId: 'village', holeCount: 9, teeGroup: 1, points: 1, sideA: ['casey', 'jamie'], sideB: ['reggel', 'solly'] },
-  { id: 6, session: 'afternoon', format: 'fourball', courseId: 'village', holeCount: 9, teeGroup: 2, points: 1, sideA: ['cooper', 'milo'], sideB: ['danny', 'coby'] }
-];
-
-const SUDDEN_DEATH = { course: 'village', hole: 1, players: ['casey', 'reggel'] };
-
 // Single source of truth for both the static Rules page and the Rules
 // Official's system prompt — edit here, both surfaces stay in sync.
 const RULES = [
@@ -103,14 +89,6 @@ function findPlayer(id) {
   return PLAYERS.find((p) => p.id === id) || null;
 }
 
-function findMatch(id) {
-  return MATCHES.find((m) => m.id === Number(id)) || null;
-}
-
-function matchesForPlayer(playerId) {
-  return MATCHES.filter((m) => m.sideA.includes(playerId) || m.sideB.includes(playerId));
-}
-
 /** Anyone in the match's group can score for anyone in it; captains can score any match. */
 function canScoreMatch(user, match) {
   if (!user || user.readOnly) return false;
@@ -123,4 +101,4 @@ function shotsFor(player, courseId) {
   return courseId === 'church' ? player.shotsChurch : player.shotsVillage;
 }
 
-module.exports = { PLAYERS, SPECTATOR, TEAMS, COURSES, MATCHES, SUDDEN_DEATH, RULES, findPlayer, findMatch, matchesForPlayer, shotsFor, canScoreMatch };
+module.exports = { PLAYERS, SPECTATOR, COURSES, RULES, findPlayer, shotsFor, canScoreMatch };

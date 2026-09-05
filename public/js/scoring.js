@@ -65,7 +65,7 @@
 
   const players = raw.sideA.concat(raw.sideB);
   const allPlayerIds = players.map((p) => p.id);
-  const match = { format: raw.format, holeCount: raw.holeCount, sideA: raw.sideA.map((p) => p.id), sideB: raw.sideB.map((p) => p.id), points: raw.points };
+  const match = { holeCount: raw.holeCount, sideA: raw.sideA.map((p) => p.id), sideB: raw.sideB.map((p) => p.id) };
 
   function currentStat(holeNumber, playerId) {
     return (stats[holeNumber] && stats[holeNumber][playerId]) || {};

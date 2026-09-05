@@ -2,16 +2,46 @@ const express = require('express');
 const router = express.Router();
 const { pool } = require('../src/db');
 const { requireAuth, requirePlayer } = require('../src/auth');
-const { canScoreMatch } = require('../src/data');
-const { buildAllMatchBundles, buildMatchBundle } = require('../src/matchData');
+const { PLAYERS, COURSES, canScoreMatch } = require('../src/data');
+const { buildAllMatchBundles, buildMatchBundle, createMatch } = require('../src/matchData');
 
 router.get('/matches', requireAuth, async (req, res, next) => {
   try {
     const bundles = await buildAllMatchBundles();
-    res.render('matches', {
-      morning: bundles.filter((b) => b.match.session === 'morning'),
-      afternoon: bundles.filter((b) => b.match.session === 'afternoon')
-    });
+    res.render('matches', { bundles });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Any of the 8 players can set up a new match against any combination of
+// the others -- there's no more fixed draw. A spectator can watch but not
+// start one.
+router.get('/matches/new', requirePlayer, (req, res) => {
+  res.render('match-new', { players: PLAYERS, courses: COURSES, error: null, values: {} });
+});
+
+router.post('/matches', requirePlayer, async (req, res, next) => {
+  try {
+    const course = COURSES[req.body.courseId];
+    if (!course) {
+      return res.status(400).render('match-new', { players: PLAYERS, courses: COURSES, error: 'Pick a course.', values: req.body });
+    }
+
+    const sideA = [];
+    const sideB = [];
+    for (const p of PLAYERS) {
+      const side = req.body[`side_${p.id}`];
+      if (side === 'A') sideA.push(p.id);
+      else if (side === 'B') sideB.push(p.id);
+    }
+
+    if (!sideA.length || !sideB.length) {
+      return res.status(400).render('match-new', { players: PLAYERS, courses: COURSES, error: 'Put at least one player on each side.', values: req.body });
+    }
+
+    const matchId = await createMatch({ courseId: course.id, holeCount: course.holes.length, sideA, sideB, createdBy: req.user.id });
+    res.redirect(`/matches/${matchId}`);
   } catch (err) {
     next(err);
   }

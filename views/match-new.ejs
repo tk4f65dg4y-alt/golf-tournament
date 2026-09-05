@@ -1,0 +1,41 @@
+<% var title = 'New match'; var active = 'matches' %>
+<%- include('partials/header') %>
+<p><a href="/matches">← All matches</a></p>
+<h1>Start a new match</h1>
+<p class="muted small">Any combination of the 8 — pick a course and put each player on a side. Whoever you leave unmarked just isn't in this one.</p>
+
+<% if (error) { %><div class="error-box"><%= error %></div><% } %>
+
+<form method="post" action="/matches" class="card">
+  <div class="field">
+    <label>Course</label>
+    <select name="courseId">
+      <% Object.values(courses).forEach(function(c) { %>
+        <option value="<%= c.id %>" <%= values.courseId === c.id ? 'selected' : '' %>><%= c.name %> (<%= c.holes.length %> holes)</option>
+      <% }) %>
+    </select>
+  </div>
+
+  <h2 class="mt" style="margin-top:20px;">Sides</h2>
+  <div class="table-scroll">
+    <table>
+      <thead><tr><th>Player</th><th>Side A</th><th>Side B</th><th>Not playing</th></tr></thead>
+      <tbody>
+        <% players.forEach(function(p) {
+          var current = values['side_' + p.id] || '';
+        %>
+          <tr>
+            <td><%= p.isCaptain ? '👑 ' : '' %><%= p.name %></td>
+            <td style="text-align:center;"><input type="radio" name="side_<%= p.id %>" value="A" <%= current === 'A' ? 'checked' : '' %> /></td>
+            <td style="text-align:center;"><input type="radio" name="side_<%= p.id %>" value="B" <%= current === 'B' ? 'checked' : '' %> /></td>
+            <td style="text-align:center;"><input type="radio" name="side_<%= p.id %>" value="" <%= current === '' ? 'checked' : '' %> /></td>
+          </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  </div>
+
+  <button class="btn block mt" type="submit">Start match</button>
+</form>
+
+<%- include('partials/footer') %>

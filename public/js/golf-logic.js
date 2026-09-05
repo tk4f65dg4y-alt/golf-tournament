@@ -46,33 +46,24 @@
   }
 
   /**
-   * @param {'singles'|'fourball'} format
+   * A side can be any number of players (1 for a singles-style match, 2 for
+   * a fourball-style one, or more) -- a side's hole score is always the best
+   * (lowest) net among its players with a real number in, which is exactly
+   * a 1-player side's own net, so one code path handles every side size.
    * @param {string[]} sideAIds, sideBIds
    * @param {Object} allocations - { playerId: { holeNumber: shots } }
    * @param {Object} holeScores - { playerId: gross|null|undefined } for this one hole
    * @param {number} holeNumber
    * @returns {'A'|'B'|'half'|undefined} undefined = not enough data yet
    */
-  function resolveHole(format, sideAIds, sideBIds, allocations, holeScores, holeNumber) {
+  function resolveHole(sideAIds, sideBIds, allocations, holeScores, holeNumber) {
     function net(playerId) {
       const gross = holeScores[playerId];
       const shots = (allocations[playerId] && allocations[playerId][holeNumber]) || 0;
       return netFor(gross, shots);
     }
 
-    if (format === 'singles') {
-      const a = net(sideAIds[0]);
-      const b = net(sideBIds[0]);
-      if (a === undefined || b === undefined) return undefined;
-      const av = a === null ? Infinity : a;
-      const bv = b === null ? Infinity : b;
-      if (av === Infinity && bv === Infinity) return 'half';
-      if (av === bv) return 'half';
-      return av < bv ? 'A' : 'B';
-    }
-
-    // fourball: pair score = best (lowest) net among players with a real number.
-    // A side is "ready" once neither of its players is still undefined.
+    // A side is "ready" once none of its players is still undefined.
     function sideReady(ids) {
       return ids.every((id) => net(id) !== undefined);
     }
@@ -96,7 +87,7 @@
   }
 
   /**
-   * @param {Object} match - { format, holeCount, sideA: string[], sideB: string[] }
+   * @param {Object} match - { holeCount, sideA: string[], sideB: string[] }
    * @param {Array<{number:number, strokeIndex:number}>} courseHoles
    * @param {Object} allocations - { playerId: { holeNumber: shots } }
    * @param {Object} scores - { holeNumber: { playerId: gross|null } }
@@ -109,7 +100,7 @@
 
     for (let h = 1; h <= match.holeCount; h++) {
       const holeScores = scores[h] || {};
-      const winner = resolveHole(match.format, match.sideA, match.sideB, allocations, holeScores, h);
+      const winner = resolveHole(match.sideA, match.sideB, allocations, holeScores, h);
       if (winner === undefined) break;
       holesPlayed = h;
       if (winner === 'A') upA++;
@@ -127,33 +118,9 @@
     const isComplete = !!decided || holesPlayed === match.holeCount;
 
     let closedResult = null;
-    let pointsA = null;
-    let pointsB = null;
     if (isComplete) {
       const remaining = decided ? decided.remaining : 0;
       closedResult = formatClosed(diff, remaining);
-      if (diff === 0) {
-        pointsA = match.points / 2;
-        pointsB = match.points / 2;
-      } else {
-        pointsA = leadingSide === 'A' ? match.points : 0;
-        pointsB = leadingSide === 'B' ? match.points : 0;
-      }
-    }
-
-    // Provisional points for the leaderboard: confirmed once closed, otherwise
-    // whoever's currently ahead gets the point, half each if all square.
-    let projectedA;
-    let projectedB;
-    if (isComplete) {
-      projectedA = pointsA;
-      projectedB = pointsB;
-    } else if (leadingSide === null) {
-      projectedA = match.points / 2;
-      projectedB = match.points / 2;
-    } else {
-      projectedA = leadingSide === 'A' ? match.points : 0;
-      projectedB = leadingSide === 'B' ? match.points : 0;
     }
 
     return {
@@ -162,10 +129,6 @@
       leadingSide,
       isComplete,
       closedResult,
-      pointsA,
-      pointsB,
-      projectedA,
-      projectedB,
       results,
       // for the scoring screen's per-hole "who won" line
       resultForHole(holeNumber) {
